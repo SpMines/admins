@@ -539,7 +539,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbwIGQ_wUou5cHmAIHPzOoXD9XHvfPk1myPob9p9FWBAIw_uwJ6tqmrMDrF71x1QAs-4/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbxiaZcI8X2t2APG80axEZnVT5SPtv1sVkSJP-cdOfj4j75ZzsUTyijRuT5dx47orTaQ/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -616,7 +616,7 @@ const catIcon=n=>(CATEGORIES.find(c=>c.n===n)||{ic:'file'}).ic;
 const ROLES={
   'Super Admin':{cls:'r-super',admin:'full',isSuper:true,canManageDepts:true,canUsers:true,canApprove:true,canBiz:true,add:1,editAll:1,del:1,desc:'Every business, every department, full control. Creates businesses & admins.'},
   'Admin':{cls:'r-admin',admin:'business',canManageDepts:true,canUsers:true,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Full control of your own business only. Other businesses stay hidden.'},
-  'Department Manager':{cls:'r-manager',admin:'manager',canManageDepts:false,canUsers:false,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Department boss — add/edit/delete content in your department and approve requests.'},
+  'Department Manager':{cls:'r-manager',admin:'manager',canManageDepts:true,canUsers:false,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Department boss — add departments, manage content & approve requests.'},
   'Employee':{cls:'r-employee',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:1,editAll:0,del:0,desc:'Add anything, edit only what you created. Delete needs a manager.'},
   'Viewer':{cls:'r-viewer',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:0,editAll:0,del:0,desc:'Read-only access within your business.'}
 };
@@ -643,7 +643,7 @@ function mScope(p){const email=(p.me||p.email||'').toLowerCase();const u=mockGet
   const role=u.role,all=role==='Super Admin';
   return{role,business:u.business||'',email:String(u.email).toLowerCase(),name:u.name,dept:u.dept,all,
     admin:(role==='Super Admin'||role==='Admin'),above:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),
-    canDepts:(role==='Super Admin'||role==='Admin'),canUsers:(role==='Super Admin'||role==='Admin'),
+    canDepts:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canUsers:(role==='Super Admin'||role==='Admin'),
     canDel:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canEditAll:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canAdd:(role!=='Viewer')};}
 function mView(s,p){return s.all?(p.business||''):s.business;}
 function mUsersFor(s,view){let r=M.users.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,business:u.business,dept:u.dept,status:u.status,last:u.last||'never'}));
