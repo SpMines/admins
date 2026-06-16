@@ -539,7 +539,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbwfWEvcQB_3baxKOxQBqLen0MnLh4oJDLSGzmOzOjHcXMTcD4o6QxFQU7OpOtvQ6g/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbziXWS86OcbeyZkJTiW-J6ODJEWl9rpeUkh5yvZhUgtaIqWBvfcmyc34ObmXqoubY_J/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -616,7 +616,7 @@ const catIcon=n=>(CATEGORIES.find(c=>c.n===n)||{ic:'file'}).ic;
 const ROLES={
   'Super Admin':{cls:'r-super',admin:'full',isSuper:true,canManageDepts:true,canUsers:true,canApprove:true,canBiz:true,add:1,editAll:1,del:1,desc:'Every business, every department, full control. Creates businesses & admins.'},
   'Admin':{cls:'r-admin',admin:'business',canManageDepts:true,canUsers:true,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Full control of your own business only. Other businesses stay hidden.'},
-  'Department Manager':{cls:'r-manager',admin:'manager',canManageDepts:true,canUsers:false,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Department boss — add/edit/delete content in your business and approve requests.'},
+  'Department Manager':{cls:'r-manager',admin:'manager',canManageDepts:false,canUsers:false,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Department boss — add/edit/delete content in your department and approve requests.'},
   'Employee':{cls:'r-employee',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:1,editAll:0,del:0,desc:'Add anything, edit only what you created. Delete needs a manager.'},
   'Viewer':{cls:'r-viewer',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:0,editAll:0,del:0,desc:'Read-only access within your business.'}
 };
@@ -643,7 +643,7 @@ function mScope(p){const email=(p.me||p.email||'').toLowerCase();const u=mockGet
   const role=u.role,all=role==='Super Admin';
   return{role,business:u.business||'',email:String(u.email).toLowerCase(),name:u.name,dept:u.dept,all,
     admin:(role==='Super Admin'||role==='Admin'),above:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),
-    canDepts:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canUsers:(role==='Super Admin'||role==='Admin'),
+    canDepts:(role==='Super Admin'||role==='Admin'),canUsers:(role==='Super Admin'||role==='Admin'),
     canDel:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canEditAll:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canAdd:(role!=='Viewer')};}
 function mView(s,p){return s.all?(p.business||''):s.business;}
 function mUsersFor(s,view){let r=M.users.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,business:u.business,dept:u.dept,status:u.status,last:u.last||'never'}));
@@ -661,8 +661,9 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mock
     case'verifyOtp':return res(String(p.code)===String(MOCK_OTP)?{ok:true}:{ok:false,error:'Incorrect code.'});
     case'getBusinessesPublic':return res({ok:true,businesses:m.biz.map(b=>({id:b.id,name:b.name}))});
     case'bootstrap':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);const view=mView(s,p)||(biz[0]?biz[0].name:'');
+      const dv=(m.depts[view]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin')?true:d.name===(s.dept||''));
       return res({ok:true,role:s.role,business:s.business,isSuper:s.all,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0})),viewBusiness:view,
-        departments:(view?(m.depts[view]||[]):[]),users:(s.canUsers?mUsersFor(s,view):[]),logs:m.logs.slice(0,12),requests:(s.above?mReqs(s,view):[])});}
+        departments:dv,users:(s.canUsers?mUsersFor(s,view):[]),logs:m.logs.slice(0,12),requests:(s.above?mReqs(s,view):[])});}
     case'getBusinesses':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);return res({ok:true,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0}))});}
     case'addBusiness':{s=mScope(p);if(!s.all)return res({ok:false,error:'Only Super Admin can add a business'});
       if(!p.name)return res({ok:false,error:'Business name required'});
@@ -679,7 +680,7 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mock
     case'deleteBusiness':{s=mScope(p);const b=m.biz.find(x=>x.id===p.id);if(!b)return res({ok:false,error:'Not found'});
       m.biz=m.biz.filter(x=>x.id!==p.id);delete m.depts[b.name];delete m.items[b.name];m.users=m.users.filter(u=>u.business!==b.name);m.requests=m.requests.filter(r=>r.business!==b.name);
       mLog(s.name,'deleted business',b.name,b.name,'');mockPut();return res({ok:true,businesses:m.biz.map(x=>({id:x.id,name:x.name,color:x.color||0}))});}
-    case'getDepartments':{s=mScope(p);const v=mView(s,p);return res({ok:true,departments:(m.depts[v]||[]).map(d=>({...d,business:v}))});}
+    case'getDepartments':{s=mScope(p);const v=mView(s,p);const dv=(m.depts[v]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin')?true:d.name===(s.dept||''));return res({ok:true,departments:dv.map(d=>({...d,business:v}))});}
     case'addDepartment':{s=mScope(p);if(!s.canDepts)return res({ok:false,error:'No permission'});const v=mView(s,p);if(!v)return res({ok:false,error:'Select a business first'});
       if(!m.depts[v])m.depts[v]=[];if(m.depts[v].some(d=>d.name.toLowerCase()===String(p.name).toLowerCase()))return res({ok:false,error:'Department already exists'});
       m.depts[v].push({id:mkid(),name:p.name,icon:p.icon||'building',color:p.color||0,desc:p.desc||'',order:m.depts[v].length+1});
@@ -704,7 +705,7 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mock
     case'addUser':{s=mScope(p);if(!s.canUsers)return res({ok:false,error:'No permission'});if(!s.all&&p.role==='Super Admin')return res({ok:false,error:'Cannot create Super Admin'});
       const biz=s.all?(p.business||''):s.business;if(m.users.some(u=>u.email.toLowerCase()===String(p.email).toLowerCase()))return res({ok:false,error:'Email already exists'});
       m.users.push({id:mkid(),name:p.name,email:p.email,password:p.pwd||mkpwd(),role:p.role,business:biz,dept:p.dept,status:p.status||'active',last:'never'});
-      mLog(s.name,'created user',p.email,biz,p.dept);mockPut();return res({ok:true,users:mUsersFor(s,mView(s,p))});}
+      mLog(s.name,'created user',p.email,biz,p.dept);mockPut();return res({ok:true,users:mUsersFor(s,mView(s,p)),tempPwd:(p.pwd||'(auto)'),mailed:false});}
     case'updateUser':{s=mScope(p);const u=m.users.find(x=>x.id===p.id);if(!u)return res({ok:false,error:'Not found'});
       const selfOnly=(u.email.toLowerCase()===s.email&&!s.canUsers);if(!s.canUsers&&!selfOnly)return res({ok:false,error:'No permission'});
       if(selfOnly){u.name=p.name;}else{u.name=p.name;u.email=p.email;u.role=(s.all?p.role:(p.role==='Super Admin'?u.role:p.role));if(s.all&&p.business)u.business=p.business;u.dept=p.dept;u.status=p.status;}
@@ -1148,7 +1149,8 @@ function saveUser(ev,id){const name=document.getElementById('m-name').value.trim
     DB.users=r.users||DB.users;closeModal();
     if(SESSION.view==='admin')renderAdminTab();else if(SESSION.view==='dept')renderDept();else if(SESSION.view==='dashboard')renderDashboard();
     if(id)toast('ok','User updated',name);
-    else toast('ok','Member added · email sent',(r.tempPwd?'Login emailed to '+email+' · temp password: '+r.tempPwd:'Welcome email sent to '+email));});}
+    else if(r.mailed)toast('ok','Member added · email sent','Login emailed to '+email+' · temp password: '+(r.tempPwd||''));
+    else toast('warn','Member added · email NOT sent','Gmail permission missing — run testMail once. Temp password: '+(r.tempPwd||''));});}
 function delUser(id){const u=DB.users.find(x=>x.id===id);
   confirmModal('Delete user?',`Remove <b style="color:var(--text)">${esc(u.name)}</b> (${esc(u.email)})? Logged in Deleted sheet.`,'Delete',async(btn)=>{
     await withBtn(btn,'Deleting',async()=>{if(live()){const r=await api('deleteUser',{id});if(r.ok)DB.users=r.users||DB.users;}else DB.users=DB.users.filter(x=>x.id!==id);});
