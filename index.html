@@ -215,6 +215,16 @@ a{color:inherit;text-decoration:none}
 .dept-hero h1{font-size:24px;font-weight:600}
 .dept-hero p{font-size:13.5px;color:var(--text-dim);margin-top:3px}
 .dept-hero .dept-actions{margin-left:auto;display:flex;gap:10px}
+.member-strip{margin:16px 0 6px;padding:14px 18px;border-radius:16px}
+.member-strip .ms-h{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);margin-bottom:12px}
+.member-strip .ms-h svg{width:16px;height:16px}
+.member-strip .ms-h b{margin-left:auto;color:var(--text);background:rgba(77,124,255,.16);padding:2px 10px;border-radius:20px;font-size:12px}
+.ms-list{display:flex;flex-wrap:wrap;gap:10px}
+.ms-chip{display:flex;align-items:center;gap:9px;padding:7px 13px 7px 7px;background:rgba(255,255,255,.04);border:1px solid var(--glass-border-soft);border-radius:30px}
+.ms-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4d7cff,#a855f7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.ms-meta{display:flex;flex-direction:column;line-height:1.25}
+.ms-n{font-size:12.5px;color:var(--text);font-weight:600}
+.ms-r{font-size:10.5px;color:var(--text-faint)}
 .tabs{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap;background:var(--glass);border:1px solid var(--glass-border-soft);padding:6px;border-radius:16px;backdrop-filter:blur(20px)}
 .tab{padding:9px 16px;border-radius:11px;font-size:13px;color:var(--text-dim);transition:.2s;display:flex;align-items:center;gap:7px}
 .tab svg{width:15px;height:15px}
@@ -529,7 +539,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbwvKAQQKf3PLj5OHBOUD0pgCBletROZEWTav6HeilXX2G7nl4GDi6IgstWx7XKMwSdi/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbwfWEvcQB_3baxKOxQBqLen0MnLh4oJDLSGzmOzOjHcXMTcD4o6QxFQU7OpOtvQ6g/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -917,7 +927,7 @@ function renderDept(){const n=SESSION.dept,d=deptByName(n),role=R();
   document.getElementById('v-dept').innerHTML=`
     <section class="dept-hero glass"><div class="big-ico" style="background:${grad(d.color)}">${svg(d.icon)}</div>
       <div><h1>${n}</h1><p>${d.desc||''}</p><div style="font-size:11.5px;color:var(--text-faint);margin-top:4px">${esc(curBiz())}</div></div>
-      ${role.canManageDepts?`<div class="dept-actions"><button class="add-btn ghost" onclick="openDeptModal('${d.id}')">${svg('edit')}Edit</button></div>`:''}</section>
+      ${(role.canUsers||role.canManageDepts)?`<div class="dept-actions">${role.canUsers?`<button class="add-btn" onclick="openUserModal(null,'${esc(n)}')">${svg('users')}Add member</button>`:''}${role.canManageDepts?`<button class="add-btn ghost" onclick="openDeptModal('${d.id}')">${svg('edit')}Edit</button>`:''}</div>`:''}</section>${memberStrip(n)}
     <div class="tabs" id="dept-tabs">${CATEGORIES.map(t=>`<button class="tab ${t.n===SESSION.deptTab?'active':''}" onclick="setDeptTab('${t.n}')">${svg(t.ic)}${t.n}</button>`).join('')}</div>
     <div id="dept-body"></div>`;
   renderDeptTab();}
@@ -939,6 +949,9 @@ function renderDeptTab(){const dept=SESSION.dept,t=SESSION.deptTab,body=document
   body.innerHTML=`<div class="cards">${list.map(it=>`<div class="card glass"><div class="ch"><div class="ci">${svg(catIcon(t))}</div><div><div class="t">${it.title}</div><div class="s">${it.meta||''}</div></div></div>
     <div class="desc">${it.description||''}</div><div class="card-foot"><span class="tag">${t}</span>${btns(it)}</div></div>`).join('')}
     ${canAdd?`<div class="card add-card" onclick="openItemModal()">${svg('plus')}<div style="color:var(--text-dim);font-size:13px">Add ${t.replace(/s$/,'').toLowerCase()}</div></div>`:''}</div>${list.length?'':empty(canAdd)}`;}
+function memberStrip(n){const mem=(DB.users||[]).filter(u=>u.dept===n);if(!mem.length)return '';
+  return `<div class="member-strip glass"><div class="ms-h">${svg('users')}<span>Department members</span><b>${mem.length}</b></div>
+    <div class="ms-list">${mem.map(u=>`<div class="ms-chip" title="${esc(u.email)}"><span class="ms-av">${(u.name[0]||'?')}</span><div class="ms-meta"><span class="ms-n">${esc(u.name)}</span><span class="ms-r">${esc(u.role)}</span></div></div>`).join('')}</div></div>`;}
 function empty(canAdd,msg){return `<div class="empty">${svg('file')}<h4>Nothing here yet</h4><p>${msg||(canAdd?'Click “Add” to create the first item.':'Items will appear here once added.')}</p></div>`;}
 
 /* video player */
@@ -1111,27 +1124,31 @@ function approveReq(ev,id){withBtn(ev&&ev.target,'Approving',async()=>{const r=a
 function rejectReq(id){confirmModal('Reject request?','This dismisses the access request.','Reject',async(btn)=>{await withBtn(btn,'Rejecting',async()=>{const r=await api('rejectRequest',{id});if(r.ok){DB.requests=r.requests||DB.requests;updateReqBadge();}});closeModal();renderAdmin();toast('warn','Rejected','Request dismissed.');});}
 
 /* user CRUD */
-function openUserModal(id){const u=id?DB.users.find(x=>x.id===id):null;const m=document.getElementById('modal');
+function openUserModal(id,presetDept){const u=id?DB.users.find(x=>x.id===id):null;const m=document.getElementById('modal');
   const roleOpts=Object.keys(ROLES).filter(x=>SESSION.isSuper||x!=='Super Admin');
-  m.innerHTML=`<div class="modal-h"><h3>${u?'Edit user':'Add new user'}</h3><button class="x" onclick="closeModal()">${svg('x')}</button></div>
-    <p class="sub">${u?'Update role, department and access.':'Create a user in '+esc(curBiz())+' & assign department + role.'}</p>
+  const curDept=u?u.dept:(presetDept||'');
+  m.innerHTML=`<div class="modal-h"><h3>${u?'Edit user':'Add member'}</h3><button class="x" onclick="closeModal()">${svg('x')}</button></div>
+    <p class="sub">${u?'Update role, department and access.':'Create a user in '+esc(curBiz())+(presetDept?(' · '+esc(presetDept)+' department'):'')+'. A welcome email with login details is sent automatically.'}</p>
     <div class="pf-field"><label>Full name</label><input id="m-name" value="${u?esc(u.name):''}" placeholder="e.g. Somnath Karmakar"></div>
     <div class="pf-field"><label>Email</label><input id="m-email" value="${u?esc(u.email):''}" placeholder="name@company.com"></div>
     ${SESSION.isSuper?`<div class="pf-field"><label>Business</label><select id="m-biz">${BUSINESSES.map(bz=>`<option ${ (u?u.business:curBiz())===bz.name?'selected':''}>${esc(bz.name)}</option>`).join('')}</select></div>`:''}
-    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="m-role">${roleOpts.map(r=>`<option ${u&&u.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
-      <div class="pf-field"><label>Department</label><select id="m-dept"><option value="">— none —</option>${DEPARTMENTS.map(d=>`<option ${u&&u.dept===d.name?'selected':''}>${d.name}</option>`).join('')}</select></div></div>
+    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="m-role">${roleOpts.map(r=>`<option ${(u?u.role:'Employee')===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="pf-field"><label>Department</label><select id="m-dept"><option value="">— none —</option>${DEPARTMENTS.map(d=>`<option ${curDept===d.name?'selected':''}>${d.name}</option>`).join('')}</select></div></div>
     <div class="profile-grid"><div class="pf-field"><label>Status</label><select id="m-status"><option value="active" ${!u||u.status==='active'?'selected':''}>Active</option><option value="off" ${u&&u.status==='off'?'selected':''}>Offline</option></select></div>
-      <div class="pf-field"><label>Password ${u?'(blank=keep)':''}</label><div class="pwd-row"><input id="m-pwd" placeholder="${u?'••••••':'auto-generate'}"><button class="add-btn ghost" type="button" onclick="document.getElementById('m-pwd').value=Math.random().toString(36).slice(2,8)+'1'">${svg('key')}</button></div></div></div>
-    <button class="pbtn" onclick="saveUser(event,'${id||''}')">${u?'Save changes':'Create user'}</button>`;
+      <div class="pf-field"><label>Password ${u?'(blank=keep)':'(blank=auto)'}</label><div class="pwd-row"><input id="m-pwd" placeholder="${u?'••••••':'auto-generate'}"><button class="add-btn ghost" type="button" onclick="document.getElementById('m-pwd').value=Math.random().toString(36).slice(2,8)+'1'">${svg('key')}</button></div></div></div>
+    <button class="pbtn" onclick="saveUser(event,'${id||''}')">${u?'Save changes':svg('users')+' Create & email login'}</button>`;
   openModal();}
 function saveUser(ev,id){const name=document.getElementById('m-name').value.trim(),email=document.getElementById('m-email').value.trim();
   if(!name||!email){toast('warn','Missing info','Name and email required.');return;}
   const payload={name,email,role:document.getElementById('m-role').value,dept:document.getElementById('m-dept').value,status:document.getElementById('m-status').value,pwd:document.getElementById('m-pwd').value};
   const bsel=document.getElementById('m-biz');if(bsel)payload.business=bsel.value;
   withBtn(ev&&ev.target,'Saving',async()=>{
-    if(live()){const r=await api(id?'updateUser':'addUser',{...payload,id});if(r.ok)DB.users=r.users||DB.users;else{toast('warn','Error',r.error||'Failed.');return;}}
-    else{if(id){const u=DB.users.find(x=>x.id===id);Object.assign(u,{name,email,role:payload.role,dept:payload.dept,status:payload.status});}else DB.users.push({id:'u'+Date.now(),name,email,role:payload.role,dept:payload.dept,status:payload.status,last:'never'});}
-    closeModal();renderAdminTab();toast('ok',id?'User updated':'User created',name);});}
+    const r=await api(id?'updateUser':'addUser',{...payload,id});
+    if(!r||!r.ok){toast('warn','Error',(r&&r.error)||'Failed.');return;}
+    DB.users=r.users||DB.users;closeModal();
+    if(SESSION.view==='admin')renderAdminTab();else if(SESSION.view==='dept')renderDept();else if(SESSION.view==='dashboard')renderDashboard();
+    if(id)toast('ok','User updated',name);
+    else toast('ok','Member added · email sent',(r.tempPwd?'Login emailed to '+email+' · temp password: '+r.tempPwd:'Welcome email sent to '+email));});}
 function delUser(id){const u=DB.users.find(x=>x.id===id);
   confirmModal('Delete user?',`Remove <b style="color:var(--text)">${esc(u.name)}</b> (${esc(u.email)})? Logged in Deleted sheet.`,'Delete',async(btn)=>{
     await withBtn(btn,'Deleting',async()=>{if(live()){const r=await api('deleteUser',{id});if(r.ok)DB.users=r.users||DB.users;}else DB.users=DB.users.filter(x=>x.id!==id);});
