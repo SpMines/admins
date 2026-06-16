@@ -117,9 +117,14 @@ a{color:inherit;text-decoration:none}
 .sb-brand .t b{background:var(--grad-bp);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sb-brand .t span{display:block;font-size:9.5px;letter-spacing:2px;color:var(--text-faint);text-transform:uppercase}
 .biz-switch{padding:10px 8px 4px}
+.all-biz-btn{width:100%;display:flex;align-items:center;gap:9px;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border:1px solid var(--glass-border-soft);border-radius:11px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:.18s}
+.all-biz-btn:hover{background:rgba(77,124,255,.16);border-color:var(--neon-purple)}
+.all-biz-btn svg{width:16px;height:16px}
 .biz-switch label{display:block;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-faint);margin:0 4px 6px}
 .biz-switch select{width:100%;padding:9px 11px;background:linear-gradient(100deg,rgba(77,124,255,.16),rgba(168,85,247,.12));border:1px solid var(--glass-border);border-radius:11px;color:var(--text);font-size:13px;font-weight:500}
 .biz-switch select:focus{outline:none;border-color:var(--neon-purple)}
+.biz-card{cursor:pointer;transition:.2s}
+.biz-card:hover{transform:translateY(-3px);border-color:var(--neon-purple);box-shadow:0 16px 40px rgba(77,124,255,.22)}
 .sb-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);padding:14px 12px 6px;display:flex;justify-content:space-between;align-items:center}
 .sb-label .add-mini{cursor:pointer;color:var(--neon-blue);width:18px;height:18px;display:grid;place-items:center;border-radius:6px}
 .sb-label .add-mini:hover{background:rgba(77,124,255,.15)}
@@ -492,6 +497,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <div id="notif-list"></div></div>
       <div class="content">
         <div class="view" id="v-dashboard"></div>
+        <div class="view" id="v-businesses"></div>
         <div class="view" id="v-dept"></div>
         <div class="view" id="v-admin"></div>
         <div class="view" id="v-profile"></div>
@@ -523,7 +529,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbyHW8RIbJzn7ZSzeNGdln-ZE-ZVuV8H_6jROy55styKkukq5qr85LLjQGA1vpk85phA/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbwvKAQQKf3PLj5OHBOUD0pgCBletROZEWTav6HeilXX2G7nl4GDi6IgstWx7XKMwSdi/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -611,17 +617,105 @@ function curBiz(){return SESSION.business||(SESSION.user&&SESSION.user.business)
 let MOCK_OTP='';
 const SEED_DEPTS=[['Directors','building',0],['Accounts','doc',1],['Sales','activity',2],['Marketing','bolt',3],['Service','settings',4],['Production','process',5]].map((d,i)=>({id:'d'+i,name:d[0],icon:d[1],color:d[2],desc:d[0]+' workspace.',order:i+1}));
 function seedItems(dept){return [['Processes','Sample process','5 steps'],['Google Forms','Daily form','live'],['Training Videos','Intro video','8:42'],['Checklists','Opening checklist','12 items']].map((it,i)=>({id:dept+'-'+i,dept,category:it[0],title:dept+': '+it[1],meta:it[2],description:'Demo item.',url:'',driveId:''}));}
-function mockApi(action,p){return new Promise(res=>setTimeout(()=>{
+/* ---------- DEMO BACKEND (in-memory, localStorage-persisted) ---------- */
+let M=null;
+function mockSeedDepts(){return [['Directors','building',0],['Accounts','doc',1],['Sales','activity',2],['Service','settings',4],['HR','users',3],['Marketing','bolt',5]].map((d,i)=>({id:'d'+Math.random().toString(36).slice(2,7),name:d[0],icon:d[1],color:d[2],desc:d[0]+' workspace.',order:i+1}));}
+function mockSeed(){return {biz:[{id:'b0',name:'SP Honda',color:0},{id:'b1',name:'SP Mines',color:3}],
+  users:[{id:'u0',name:'Administrator',email:'admin@portal.com',password:'admin@123',role:'Super Admin',business:'',dept:'',status:'active',last:'now'}],
+  depts:{'SP Honda':mockSeedDepts(),'SP Mines':mockSeedDepts()}, items:{'SP Honda':{},'SP Mines':{}}, requests:[], logs:[]};}
+function mockGet(){ if(M)return M; try{const s=JSON.parse(localStorage.getItem('smp_mock_v4'));if(s&&s.biz){M=s;return M;}}catch(e){} M=mockSeed();mockPut();return M; }
+function mockPut(){ try{localStorage.setItem('smp_mock_v4',JSON.stringify(M));}catch(e){} }
+function mkid(){return 'id'+Date.now()+Math.floor(Math.random()*900+100);}
+function mkpwd(){return Math.random().toString(36).slice(2,6)+Math.floor(100+Math.random()*900);}
+function mLog(who,act,obj,biz,dept){M.logs.unshift({who,act,obj,business:biz||'',dept:dept||'',time:'just now'});}
+function mScope(p){const email=(p.me||p.email||'').toLowerCase();const u=mockGet().users.find(x=>String(x.email).toLowerCase()===email);
+  if(!u)return{role:'Viewer',business:'',email:'',name:'',all:false,above:false,canUsers:false,canDepts:false,canDel:false,canEditAll:false,canAdd:false};
+  const role=u.role,all=role==='Super Admin';
+  return{role,business:u.business||'',email:String(u.email).toLowerCase(),name:u.name,dept:u.dept,all,
+    admin:(role==='Super Admin'||role==='Admin'),above:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),
+    canDepts:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canUsers:(role==='Super Admin'||role==='Admin'),
+    canDel:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canEditAll:(role==='Super Admin'||role==='Admin'||role==='Department Manager'),canAdd:(role!=='Viewer')};}
+function mView(s,p){return s.all?(p.business||''):s.business;}
+function mUsersFor(s,view){let r=M.users.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,business:u.business,dept:u.dept,status:u.status,last:u.last||'never'}));
+  if(!s.all)return r.filter(u=>u.business===s.business); if(view)return r.filter(u=>u.business===view); return r;}
+function mReqs(s,view){return M.requests.filter(r=>r.status==='pending'&&(s.all?r.business===view:r.business===s.business)).map(r=>({id:r.id,business:r.business,name:r.name,email:r.email,reason:r.reason,time:r.time||'just now'}));}
+
+function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mockGet(); let s;
   switch(action){
-    case'login':return res(p.email==='admin@systemsmaster.com'&&p.pwd==='admin@123'?{ok:true,user:{name:'Administrator',email:p.email,role:'Super Admin',dept:'Directors'}}:{ok:false,error:'Invalid email or password (demo: admin@systemsmaster.com / admin@123)'});
+    case'login':{const u=m.users.find(x=>String(x.email).toLowerCase()===String(p.email).toLowerCase());
+      if(!u||String(u.password)!==String(p.pwd))return res({ok:false,error:'Invalid email or password (demo: admin@portal.com / admin@123)'});
+      if(u.status==='off')return res({ok:false,error:'Account disabled.'});u.last='just now';mockPut();
+      return res({ok:true,otpOn:CONFIG.OTP_DEBUG_FALLBACK?true:false,user:{name:u.name,email:u.email,role:u.role,business:u.business||'',dept:u.dept}});}
     case'googleLogin':return res({ok:false,needRequest:true,error:'Connect backend for Google sign-in.'});
-    case'sendOtp':MOCK_OTP=String(Math.floor(100000+Math.random()*900000));return res({ok:true,debugCode:CONFIG.OTP_DEBUG_FALLBACK?MOCK_OTP:undefined});
+    case'sendOtp':MOCK_OTP=String(Math.floor(100000+Math.random()*900000));return res({ok:true,mailed:false,debugCode:MOCK_OTP});
     case'verifyOtp':return res(String(p.code)===String(MOCK_OTP)?{ok:true}:{ok:false,error:'Incorrect code.'});
-    case'bootstrap':return res({ok:true,departments:DEPARTMENTS.length?DEPARTMENTS:SEED_DEPTS,users:DB.users,logs:DB.logs,requests:[]});
-    case'getItems':return res({ok:true,items:ITEMS[p.dept]||seedItems(p.dept)});
+    case'getBusinessesPublic':return res({ok:true,businesses:m.biz.map(b=>({id:b.id,name:b.name}))});
+    case'bootstrap':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);const view=mView(s,p)||(biz[0]?biz[0].name:'');
+      return res({ok:true,role:s.role,business:s.business,isSuper:s.all,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0})),viewBusiness:view,
+        departments:(view?(m.depts[view]||[]):[]),users:(s.canUsers?mUsersFor(s,view):[]),logs:m.logs.slice(0,12),requests:(s.above?mReqs(s,view):[])});}
+    case'getBusinesses':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);return res({ok:true,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0}))});}
+    case'addBusiness':{s=mScope(p);if(!s.all)return res({ok:false,error:'Only Super Admin can add a business'});
+      if(!p.name)return res({ok:false,error:'Business name required'});
+      if(m.biz.some(b=>b.name.toLowerCase()===p.name.toLowerCase()))return res({ok:false,error:'Business already exists'});
+      m.biz.push({id:mkid(),name:p.name,color:p.color||0});m.depts[p.name]=mockSeedDepts();m.items[p.name]={};
+      if(p.adminEmail&&p.adminName&&!m.users.some(u=>u.email.toLowerCase()===p.adminEmail.toLowerCase()))
+        m.users.push({id:mkid(),name:p.adminName,email:p.adminEmail,password:p.adminPwd||mkpwd(),role:'Admin',business:p.name,dept:'',status:'active',last:'never'});
+      mLog(s.name,'created business',p.name,p.name,'');mockPut();
+      return res({ok:true,businesses:m.biz.map(b=>({id:b.id,name:b.name,color:b.color||0})),users:mUsersFor(s,mView(s,p))});}
+    case'updateBusiness':{s=mScope(p);const b=m.biz.find(x=>x.id===p.id);if(!b)return res({ok:false,error:'Not found'});const old=b.name;
+      if(p.name){m.depts[p.name]=m.depts[old];m.items[p.name]=m.items[old];if(p.name!==old){delete m.depts[old];delete m.items[old];}
+        m.users.forEach(u=>{if(u.business===old)u.business=p.name;});m.requests.forEach(r=>{if(r.business===old)r.business=p.name;});b.name=p.name;}
+      if(p.color!==undefined)b.color=p.color;mockPut();return res({ok:true,businesses:m.biz.map(x=>({id:x.id,name:x.name,color:x.color||0}))});}
+    case'deleteBusiness':{s=mScope(p);const b=m.biz.find(x=>x.id===p.id);if(!b)return res({ok:false,error:'Not found'});
+      m.biz=m.biz.filter(x=>x.id!==p.id);delete m.depts[b.name];delete m.items[b.name];m.users=m.users.filter(u=>u.business!==b.name);m.requests=m.requests.filter(r=>r.business!==b.name);
+      mLog(s.name,'deleted business',b.name,b.name,'');mockPut();return res({ok:true,businesses:m.biz.map(x=>({id:x.id,name:x.name,color:x.color||0}))});}
+    case'getDepartments':{s=mScope(p);const v=mView(s,p);return res({ok:true,departments:(m.depts[v]||[]).map(d=>({...d,business:v}))});}
+    case'addDepartment':{s=mScope(p);if(!s.canDepts)return res({ok:false,error:'No permission'});const v=mView(s,p);if(!v)return res({ok:false,error:'Select a business first'});
+      if(!m.depts[v])m.depts[v]=[];if(m.depts[v].some(d=>d.name.toLowerCase()===String(p.name).toLowerCase()))return res({ok:false,error:'Department already exists'});
+      m.depts[v].push({id:mkid(),name:p.name,icon:p.icon||'building',color:p.color||0,desc:p.desc||'',order:m.depts[v].length+1});
+      mLog(s.name,'created department',p.name,v,p.name);mockPut();return res({ok:true,departments:m.depts[v].map(d=>({...d,business:v}))});}
+    case'updateDepartment':{s=mScope(p);const v=mView(s,p);const d=(m.depts[v]||[]).find(x=>x.id===p.id);if(!d)return res({ok:false,error:'Not found'});
+      if(p.name!==undefined)d.name=p.name;if(p.icon!==undefined)d.icon=p.icon;if(p.color!==undefined)d.color=p.color;if(p.desc!==undefined)d.desc=p.desc;
+      mockPut();return res({ok:true,departments:m.depts[v].map(x=>({...x,business:v}))});}
+    case'deleteDepartment':{s=mScope(p);if(!s.canDel)return res({ok:false,error:'No permission'});const v=mView(s,p);const d=(m.depts[v]||[]).find(x=>x.id===p.id);if(!d)return res({ok:false,error:'Not found'});
+      m.depts[v]=m.depts[v].filter(x=>x.id!==p.id);if(m.items[v])delete m.items[v][d.name];mLog(s.name,'deleted department',d.name,v,d.name);mockPut();return res({ok:true,departments:m.depts[v].map(x=>({...x,business:v}))});}
+    case'getItems':{s=mScope(p);const v=mView(s,p);return res({ok:true,items:((m.items[v]||{})[p.dept]||[])});}
+    case'addItem':{s=mScope(p);if(!s.canAdd)return res({ok:false,error:'No permission to add'});const v=mView(s,p);if(!m.items[v])m.items[v]={};if(!m.items[v][p.dept])m.items[v][p.dept]=[];
+      const it={id:mkid(),business:v,dept:p.dept,category:p.category,title:p.title,meta:p.meta||'',description:p.description||'',url:p.url||'',driveId:'',createdBy:s.email,updatedAt:'just now'};
+      m.items[v][p.dept].push(it);mLog(s.name,'added '+p.category,p.title,v,p.dept);mockPut();return res({ok:true,items:m.items[v][p.dept]});}
+    case'updateItem':{s=mScope(p);const v=mView(s,p);const list=(m.items[v]||{})[p.dept]||[];const it=list.find(x=>x.id===p.id);if(!it)return res({ok:false,error:'Not found'});
+      const own=String(it.createdBy||'').toLowerCase()===s.email;if(!(s.canEditAll||own))return res({ok:false,error:'You can only edit items you created.'});
+      ['title','meta','description','url'].forEach(k=>{if(p[k]!==undefined)it[k]=p[k];});it.updatedAt='just now';mockPut();return res({ok:true,items:list});}
+    case'deleteItem':{s=mScope(p);if(!s.canDel)return res({ok:false,error:'Delete needs Manager/Admin access.'});const v=mView(s,p);if(m.items[v]&&m.items[v][p.dept])m.items[v][p.dept]=m.items[v][p.dept].filter(x=>x.id!==p.id);mockPut();return res({ok:true,items:(m.items[v]||{})[p.dept]||[]});}
+    case'uploadFile':{s=mScope(p);if(!s.canAdd)return res({ok:false,error:'No permission'});const v=mView(s,p);if(!m.items[v])m.items[v]={};if(!m.items[v][p.dept])m.items[v][p.dept]=[];
+      const cat=(String(p.mime||'').indexOf('video/')===0)?'Training Videos':'Files';const it={id:mkid(),business:v,dept:p.dept,category:cat,title:p.name,meta:Math.round((p.size||0)/1024)+' KB',description:'Uploaded (demo)',url:'',driveId:'',createdBy:s.email,updatedAt:'just now'};
+      m.items[v][p.dept].push(it);mockPut();return res({ok:true,category:cat,items:m.items[v][p.dept]});}
+    case'getUsers':{s=mScope(p);return res({ok:true,users:mUsersFor(s,mView(s,p))});}
+    case'addUser':{s=mScope(p);if(!s.canUsers)return res({ok:false,error:'No permission'});if(!s.all&&p.role==='Super Admin')return res({ok:false,error:'Cannot create Super Admin'});
+      const biz=s.all?(p.business||''):s.business;if(m.users.some(u=>u.email.toLowerCase()===String(p.email).toLowerCase()))return res({ok:false,error:'Email already exists'});
+      m.users.push({id:mkid(),name:p.name,email:p.email,password:p.pwd||mkpwd(),role:p.role,business:biz,dept:p.dept,status:p.status||'active',last:'never'});
+      mLog(s.name,'created user',p.email,biz,p.dept);mockPut();return res({ok:true,users:mUsersFor(s,mView(s,p))});}
+    case'updateUser':{s=mScope(p);const u=m.users.find(x=>x.id===p.id);if(!u)return res({ok:false,error:'Not found'});
+      const selfOnly=(u.email.toLowerCase()===s.email&&!s.canUsers);if(!s.canUsers&&!selfOnly)return res({ok:false,error:'No permission'});
+      if(selfOnly){u.name=p.name;}else{u.name=p.name;u.email=p.email;u.role=(s.all?p.role:(p.role==='Super Admin'?u.role:p.role));if(s.all&&p.business)u.business=p.business;u.dept=p.dept;u.status=p.status;}
+      if(p.pwd)u.password=p.pwd;mockPut();return res({ok:true,users:(s.canUsers?mUsersFor(s,mView(s,p)):[])});}
+    case'deleteUser':{s=mScope(p);if(!s.canUsers)return res({ok:false,error:'No permission'});const u=m.users.find(x=>x.id===p.id);if(!u)return res({ok:false,error:'Not found'});
+      if(u.role==='Super Admin'&&!s.all)return res({ok:false,error:'Cannot delete Super Admin'});m.users=m.users.filter(x=>x.id!==p.id);mockPut();return res({ok:true,users:mUsersFor(s,mView(s,p))});}
+    case'getRequests':{s=mScope(p);return res({ok:true,requests:mReqs(s,mView(s,p))});}
+    case'requestAccess':{if(!p.name||!p.email)return res({ok:false,error:'Name and email required'});if(m.users.some(u=>u.email.toLowerCase()===String(p.email).toLowerCase()))return res({ok:false,error:'Account already exists.'});
+      m.requests.push({id:mkid(),business:p.business||'',name:p.name,email:String(p.email).toLowerCase(),reason:p.reason||'',status:'pending',time:'just now',approvedBy:''});mockPut();return res({ok:true});}
+    case'approveRequest':{s=mScope(p);if(!s.above)return res({ok:false,error:'No permission'});const r=m.requests.find(x=>x.id===p.id);if(!r)return res({ok:false,error:'Not found'});
+      const pwd=mkpwd();if(!m.users.some(u=>u.email.toLowerCase()===r.email.toLowerCase()))m.users.push({id:mkid(),name:r.name,email:r.email,password:pwd,role:p.role||'Employee',business:r.business||'',dept:p.dept||'',status:'active',last:'never'});
+      r.status='approved';r.approvedBy=s.name;mLog(s.name,'approved access',r.email,r.business,p.dept||'');mockPut();
+      return res({ok:true,users:mUsersFor(s,mView(s,p)),requests:mReqs(s,mView(s,p)),tempPwd:pwd,approvedBy:s.name});}
+    case'rejectRequest':{s=mScope(p);const r=m.requests.find(x=>x.id===p.id);if(r)r.status='rejected';mockPut();return res({ok:true,requests:mReqs(s,mView(s,p))});}
+    case'changePassword':{const u=m.users.find(x=>x.email.toLowerCase()===String(p.email).toLowerCase());if(!u)return res({ok:false,error:'User not found'});
+      if(String(u.password)!==String(p.oldPwd))return res({ok:false,error:'Current password is wrong'});if(String(p.newPwd).length<6)return res({ok:false,error:'New password must be 6+ chars'});u.password=p.newPwd;mockPut();return res({ok:true});}
+    case'resetPassword':{s=mScope(p);const u=m.users.find(x=>x.id===p.id);if(!u)return res({ok:false,error:'Not found'});const pwd=p.newPwd||mkpwd();u.password=pwd;mockPut();return res({ok:true,users:mUsersFor(s,mView(s,p)),newPwd:pwd});}
     default:return res({ok:true});
   }
-},300));}
+},260));}
+function resetDemo(){try{localStorage.removeItem('smp_mock_v4');}catch(e){}M=null;toast('ok','Demo reset','Sample data wapas aa gaya.');location.reload();}
 
 /* ---------- state ---------- */
 let DEPARTMENTS=[], ITEMS={}, DB={users:[],logs:[],requests:[]}, BUSINESSES=[];
@@ -645,7 +739,8 @@ function doLogin(ev){const email=document.getElementById('login-email').value.tr
   SESSION.remember=document.getElementById('remember').checked;
   withBtn(ev&&ev.target,'Signing in',async()=>{const r=await api('login',{email,pwd:pass});
     if(!r.ok){fail('login-err',r.error||'Login failed.');return;}
-    SESSION.pendingUser=r.user;startOtp();});}
+    SESSION.pendingUser=r.user;
+    if(r.otpOn===false){enterApp(r.user);}else{startOtp();}});}
 
 /* real Google sign-in */
 function initGoogle(){
@@ -703,10 +798,7 @@ function sendReset(ev){const email=document.getElementById('forgot-email').value
     toast('ok','Request sent','Ask your admin to reset it — they have been notified.');showAuth('login');});}
 
 /* ================= ENTER / EXIT ================= */
-async function enterApp(user){SESSION.user=user;SESSION.business=user.business||'';
-  // Immediately set isSuper from role — bootstrap will confirm/override
-  SESSION.isSuper=(user.role==='Super Admin');
-  saveSession();
+async function enterApp(user){SESSION.user=user;SESSION.business=user.business||'';saveSession();
   document.getElementById('auth').style.display='none';document.getElementById('app').classList.add('show');
   document.getElementById('sb-avatar').textContent=user.name[0];document.getElementById('sb-name').textContent=user.name;document.getElementById('sb-role').textContent=user.role;
   document.getElementById('v-dashboard').innerHTML='<div class="spinner"></div>';
@@ -716,27 +808,23 @@ async function enterApp(user){SESSION.user=user;SESSION.business=user.business||
   const showAdmin=!!(role.admin||role.canApprove||role.canUsers);
   document.getElementById('admin-nav').style.display=showAdmin?'':'none';
   document.getElementById('admin-label').style.display=showAdmin?'':'none';
-  buildBizSwitcher();buildDeptNav();buildNotifs();updateReqBadge();go('dashboard');
+  buildBizSwitcher();buildDeptNav();buildNotifs();updateReqBadge();applyAvatar();
+  go(SESSION.isSuper?'businesses':'dashboard');
   toast('ok','Welcome, '+user.name.split(' ')[0]+'!',(SESSION.isSuper?'Super Admin · all businesses':user.role+' · '+(SESSION.business||'—')));}
 async function bootstrapData(){
-  if(live()){const r=await api('bootstrap',{email:SESSION.user.email,role:SESSION.user.role});
-    if(r.ok){BUSINESSES=r.businesses||[];
-      // isSuper: trust backend OR fallback to role check
-      SESSION.isSuper=!!r.isSuper||(SESSION.user.role==='Super Admin');
-      SESSION.business=r.viewBusiness||SESSION.user.business||(BUSINESSES[0]?BUSINESSES[0].name:'');
-      DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}
-    else{// backend failed — still set isSuper from role
-      SESSION.isSuper=(SESSION.user.role==='Super Admin');}}
-  else{BUSINESSES=[{id:'b0',name:'Default Business',color:0}];
-    SESSION.isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
-    SESSION.business='Default Business';
-    DEPARTMENTS=clone(SEED_DEPTS);DB.users=[{id:'u0',name:'Administrator',email:'admin@systemsmaster.com',role:'Super Admin',business:'Default Business',dept:'Directors',status:'active',last:'now'}];DB.logs=[];DB.requests=[];}
+  const r=await api('bootstrap',{email:SESSION.user.email,role:SESSION.user.role,business:SESSION.business});
+  if(r&&r.ok){BUSINESSES=r.businesses||[];SESSION.isSuper=!!r.isSuper;
+    SESSION.business=r.viewBusiness||SESSION.business||SESSION.user.business||(BUSINESSES[0]?BUSINESSES[0].name:'');
+    DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}
   ITEMS={};}
 function computeDepts(){const names=DEPARTMENTS.map(d=>d.name);
   SESSION.user.depts=names;
   SESSION.user.lastLogin=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});}
-async function switchBiz(name){if(name===SESSION.business)return;SESSION.business=name;ITEMS={};
-  await bootstrapData();computeDepts();buildDeptNav();updateReqBadge();go('dashboard');toast('info','Business switched',name);}
+async function switchBiz(name){await enterBusiness(name);}
+async function enterBusiness(name){if(!name)return;SESSION.business=name;ITEMS={};
+  document.getElementById('v-dashboard').innerHTML='<div class="spinner"></div>';
+  await bootstrapData();computeDepts();buildDeptNav();buildBizSwitcher();updateReqBadge();go('dashboard');toast('info','Opened',name);}
+function backToBusinesses(){go('businesses');}
 function logout(){clearInterval(SESSION.otpTimer);clearSession();
   SESSION={user:null,view:'dashboard',dept:null,deptTab:'Processes',pendingUser:null,otp:'',otpTimer:null,remember:true,business:'',isSuper:false};
   DEPARTMENTS=[];ITEMS={};DB={users:[],logs:[],requests:[]};BUSINESSES=[];
@@ -745,18 +833,31 @@ function logout(){clearInterval(SESSION.otpTimer);clearSession();
   const sw=document.getElementById('biz-switch');if(sw)sw.remove();
   showAuth('login');document.getElementById('login-pass').value='';}
 async function refreshAll(){await bootstrapData();computeDepts();buildBizSwitcher();buildDeptNav();updateReqBadge();
-  if(SESSION.view==='dashboard')renderDashboard();else if(SESSION.view==='dept'){ITEMS[SESSION.dept]=null;openDept(SESSION.dept);}else if(SESSION.view==='admin')renderAdmin();else if(SESSION.view==='profile')renderProfile();
+  if(SESSION.view==='businesses')renderBusinessesLanding();else if(SESSION.view==='dashboard')renderDashboard();else if(SESSION.view==='dept'){ITEMS[SESSION.dept]=null;openDept(SESSION.dept);}else if(SESSION.view==='admin')renderAdmin();else if(SESSION.view==='profile')renderProfile();
   toast('ok','Refreshed','Latest data loaded.');}
 function updateReqBadge(){const n=(DB.requests||[]).length,b=document.getElementById('req-badge');
   if(n>0&&R().canApprove){b.style.display='';b.textContent=n;}else b.style.display='none';}
 
 /* ---------- business switcher (Super Admin) ---------- */
 function buildBizSwitcher(){let host=document.getElementById('biz-switch');
-  const _isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
-  if(!_isSuper||BUSINESSES.length<1){if(host)host.remove();return;}
+  if(!SESSION.isSuper||BUSINESSES.length<1){if(host)host.remove();return;}
   if(!host){host=document.createElement('div');host.id='biz-switch';host.className='biz-switch';
     const brand=document.querySelector('.sb-brand');brand.parentNode.insertBefore(host,brand.nextSibling);}
-  host.innerHTML=`<label>Viewing business</label><select onchange="switchBiz(this.value)">${BUSINESSES.map(b=>`<option ${b.name===SESSION.business?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`;}
+  host.innerHTML=`<button class="all-biz-btn" onclick="backToBusinesses()">${svg('shield')}<span>All Businesses</span></button>
+    <label>Viewing</label><select onchange="enterBusiness(this.value)">${BUSINESSES.map(b=>`<option ${b.name===SESSION.business?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`;}
+
+/* ---------- businesses landing (cards) ---------- */
+function renderBusinessesLanding(){const host=document.getElementById('v-businesses');const role=R();
+  host.innerHTML=`
+    <section class="hero glass"><h1>Businesses</h1><p>Har business ka apna alag workspace. Card pe click karke andar jao.</p>
+      <div class="meta"><div>Total · <b>${BUSINESSES.length}</b></div><div>You · <b>${esc(SESSION.user.role)}</b></div></div></section>
+    <div class="dept-quick" style="margin-top:18px">
+      ${BUSINESSES.map(b=>{const cnt=DB.users.filter(u=>u.business===b.name).length;return`
+        <div class="dqc glass biz-card" onclick="enterBusiness('${esc(b.name)}')"><div class="ico" style="background:${grad(b.color)}">${svg('shield')}</div>
+          <div class="n">${esc(b.name)}</div><div class="c">Open workspace →</div>
+          ${role.isSuper?`<div class="edit-fab"><button onclick="event.stopPropagation();openBizModal('${b.id}')">${svg('edit')}</button><button onclick="event.stopPropagation();delBiz('${b.id}')">${svg('trash')}</button></div>`:''}</div>`;}).join('')}
+      ${role.isSuper?`<div class="dqc add-dept glass" onclick="openBizModal()">${svg('plus')}<div class="n">New business</div></div>`:''}</div>
+    ${BUSINESSES.length?'':`<div class="empty" style="margin-top:20px">${svg('shield')}<h4>No businesses yet</h4><p>Click “New business” to create your first one.</p></div>`}`;}
 
 /* ---------- sidebar ---------- */
 function deptByName(n){return DEPARTMENTS.find(d=>d.name===n);}
@@ -766,13 +867,14 @@ function buildDeptNav(){const wrap=document.getElementById('dept-nav');wrap.inne
 function setActiveNav(k){document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===k));}
 
 /* ================= ROUTER ================= */
-function go(view){SESSION.view=view;['dashboard','dept','admin','profile'].forEach(v=>document.getElementById('v-'+v).classList.toggle('active',v===view));
-  if(view==='dashboard'){renderDashboard();setActiveNav('dashboard');setTitle('Dashboard','Overview of your workspace');}
+function go(view){SESSION.view=view;['dashboard','businesses','dept','admin','profile'].forEach(v=>document.getElementById('v-'+v).classList.toggle('active',v===view));
+  if(view==='businesses'){renderBusinessesLanding();setActiveNav('businesses');setTitle('Businesses','Pick a business to open its workspace');}
+  if(view==='dashboard'){renderDashboard();setActiveNav('dashboard');setTitle(curBiz()||'Dashboard','Overview of your workspace');}
   if(view==='admin'){renderAdmin();setActiveNav('admin');setTitle('Admin Panel','Manage users, departments & system');}
   if(view==='profile'){renderProfile();setActiveNav('');setTitle('My Profile','Account & preferences');}
   toggleSidebar(false);window.scrollTo(0,0);}
 async function openDept(n){SESSION.view='dept';SESSION.dept=n;SESSION.deptTab='Processes';
-  ['dashboard','dept','admin','profile'].forEach(v=>document.getElementById('v-'+v).classList.toggle('active',v==='dept'));
+  ['dashboard','businesses','dept','admin','profile'].forEach(v=>document.getElementById('v-'+v).classList.toggle('active',v==='dept'));
   setActiveNav('dept:'+n);const d=deptByName(n);setTitle(n+' Department',d?d.desc:'');
   document.getElementById('v-dept').innerHTML='<div class="spinner"></div>';await loadItems(n);renderDept();toggleSidebar(false);window.scrollTo(0,0);}
 function setTitle(t,s){document.getElementById('pg-title').childNodes[0].nodeValue=t;document.getElementById('pg-sub').textContent=s;}
@@ -913,12 +1015,11 @@ function delDept(id){const d=DEPARTMENTS.find(x=>x.id===id);
 /* ================= ADMIN PANEL ================= */
 let ADMIN_TAB='requests';
 function renderAdmin(){const role=R();if(!(role.admin||role.canApprove||role.canUsers)){go('dashboard');return;}
-  const _isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
   let tabs=[];
   if(role.canApprove)tabs.push(['requests','Requests','mail']);
   if(role.canUsers)tabs.push(['users','Users','users']);
   if(role.canManageDepts)tabs.push(['depts','Departments','building']);
-  if(_isSuper)tabs.push(['biz','Businesses','shield']);
+  if(role.isSuper)tabs.push(['biz','Businesses','shield']);
   if(role.admin)tabs.push(['perms','Permissions','star']);
   if(role.admin)tabs.push(['logs','Audit Logs','activity']);
   if(role.admin)tabs.push(['settings','Settings','settings']);
@@ -926,7 +1027,7 @@ function renderAdmin(){const role=R();if(!(role.admin||role.canApprove||role.can
   document.getElementById('v-admin').innerHTML=`<div class="admin-tabs">${tabs.map(([k,l,ic])=>`<button class="atab ${k===ADMIN_TAB?'active':''}" onclick="adminTab('${k}')">${svg(ic)}${l}${k==='requests'&&DB.requests.length?`<span class="nb">${DB.requests.length}</span>`:''}</button>`).join('')}</div><div id="admin-body"></div>`;
   renderAdminTab();}
 function adminTab(k){ADMIN_TAB=k;renderAdmin();}
-function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin'),role=R();
+function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.isSuper,role=R();
   if(ADMIN_TAB==='biz'){
     b.innerHTML=`<div class="toolbar"><h3>Businesses <span class="tag">${BUSINESSES.length}</span></h3><button class="add-btn" onclick="openBizModal()">${svg('plus')}New business</button></div>
       <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Har business apne Admin ke under hota hai — ek admin sirf apna business dekhega. Naya business banao + uska admin set karo.</p>
@@ -1064,9 +1165,7 @@ function bigAvatarHTML(){const img=getAvatar();const base='width:96px;height:96p
   return img?`<div style="${base};background:none;overflow:hidden"><img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
             :`<div style="${base};background:${grad(getAvColor())}">${(SESSION.user.name[0]||'?')}</div>`;}
 
-function renderProfile(){
-  if(!SESSION.user){go('dashboard');return;}
-  const u=SESSION.user,role=R(),hasImg=!!getAvatar();
+function renderProfile(){const u=SESSION.user,role=R(),hasImg=!!getAvatar();
   const perms=[];
   if(role.add)perms.push(role.editAll?'Add &amp; edit all items':'Add items, edit own');else perms.push('View only');
   if(role.del)perms.push('Delete');
@@ -1074,167 +1173,47 @@ function renderProfile(){
   if(role.canUsers)perms.push('Manage users');
   if(role.canManageDepts)perms.push('Manage departments');
   if(role.isSuper)perms.push('All businesses');
-  const myLogs=(DB.logs||[]).filter(l=>l.who===u.name).slice(0,5);
   document.getElementById('v-profile').innerHTML=`
-  <style>
-  .pf-hero{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:22px;background:linear-gradient(135deg,rgba(77,124,255,.18) 0%,rgba(168,85,247,.18) 100%);border:1px solid var(--glass-border-soft);backdrop-filter:blur(26px)}
-  .pf-hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(77,124,255,.08),rgba(168,85,247,.06),rgba(38,214,245,.04));z-index:0}
-  .pf-hero-content{position:relative;z-index:1;padding:32px 30px;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
-  .pf-av-wrap{position:relative;flex-shrink:0}
-  .pf-big-av{width:100px;height:100px;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:700;color:#fff;box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.12);overflow:hidden;flex-shrink:0}
-  .pf-cam-btn{position:absolute;bottom:-4px;right:-4px;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4d7cff,#a855f7);border:3px solid var(--bg-0);display:grid;place-items:center;cursor:pointer;transition:.2s;box-shadow:0 4px 12px rgba(77,124,255,.4)}
-  .pf-cam-btn:hover{transform:scale(1.12)}
-  .pf-cam-btn svg{width:14px;height:14px;color:#fff}
-  .pf-hero-info{flex:1;min-width:200px}
-  .pf-hero-name{font-size:26px;font-weight:700;margin-bottom:10px;letter-spacing:.2px}
-  .pf-hero-chips{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-  .pf-hero-email{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:7px}
-  .pf-hero-email svg{width:14px;height:14px;color:var(--text-faint)}
-  .pf-hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-  .pf-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0;background:rgba(255,255,255,.04);border-top:1px solid var(--glass-border-soft)}
-  .pf-stat-cell{padding:16px 22px;border-right:1px solid var(--glass-border-soft);display:flex;flex-direction:column;gap:2px}
-  .pf-stat-cell:last-child{border-right:none}
-  .pf-stat-num{font-size:21px;font-weight:700;color:var(--text)}
-  .pf-stat-lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint)}
-  .pf-tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--glass);border:1px solid var(--glass-border-soft);padding:5px;border-radius:14px;width:fit-content;backdrop-filter:blur(20px)}
-  .pf-tab{padding:8px 20px;border-radius:10px;font-size:13px;font-weight:500;color:var(--text-dim);transition:.2s;cursor:pointer;white-space:nowrap}
-  .pf-tab.active{background:var(--grad-bp);color:#fff;box-shadow:0 4px 14px -6px rgba(124,58,237,.7)}
-  .pf-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.05)}
-  .pf-body-wrap{display:none}.pf-body-wrap.active{display:block}
-  .pf-photo-zone{border:2px dashed var(--glass-border);border-radius:18px;padding:36px;text-align:center;transition:.3s;cursor:pointer;margin-bottom:18px;background:rgba(255,255,255,.02)}
-  .pf-photo-zone:hover{border-color:var(--neon-purple);background:rgba(168,85,247,.04)}
-  .pf-photo-zone svg{width:38px;height:38px;color:var(--neon-purple);margin-bottom:12px;opacity:.8}
-  .pf-av-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-  .pf-av-opt{width:48px;height:48px;border-radius:14px;cursor:pointer;border:2px solid transparent;transition:.2s;display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff}
-  .pf-av-opt.sel{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.2)}
-  .pf-perm-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--glass-border-soft)}
-  .pf-perm-item:last-child{border-bottom:none}
-  .pf-perm-dot{width:8px;height:8px;border-radius:50%;background:var(--neon-cyan);flex-shrink:0}
-  .pf-perm-text{font-size:13px;color:var(--text-dim)}
-  </style>
-
-  <!-- HERO CARD -->
-  <div class="pf-hero">
-    <div class="pf-hero-bg"></div>
-    <div class="pf-hero-content">
-      <div class="pf-av-wrap">
-        <div class="pf-big-av" id="pf-big-av-el" style="background:${hasImg?'none':grad(getAvColor())}">${hasImg?`<img src="${getAvatar()}" style="width:100%;height:100%;object-fit:cover">`:esc(u.name[0]||'?')}</div>
-        <button class="pf-cam-btn" onclick="pickAvatarPhoto()" title="Change photo">${svg('edit')}</button>
-      </div>
-      <div class="pf-hero-info">
-        <div class="pf-hero-name">${esc(u.name)}</div>
-        <div class="pf-hero-chips">
-          <span class="role-chip ${role.cls}">${dot()}${u.role}</span>
+    <section class="profile-head glass" style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+      <div style="position:relative">${bigAvatarHTML()}
+        <button onclick="pickAvatarPhoto()" title="Change photo" style="position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;border:3px solid var(--bg);background:linear-gradient(135deg,#4d7cff,#a855f7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer">${svg('edit')}</button></div>
+      <div style="flex:1;min-width:200px"><h1 style="margin:0 0 8px">${esc(u.name)}</h1>
+        <div class="meta" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span class="role-chip ${role.cls}">${dot()}${u.role}</span>
           <span class="status-chip s-active"><span class="sd"></span>Active</span>
-          <span class="tag" style="display:inline-flex;align-items:center;gap:5px">${svg('shield','',14)}${esc(curBiz()||'—')}</span>
-        </div>
-        <div class="pf-hero-email">${svg('mail')}${esc(u.email)}</div>
-        <div class="pf-hero-actions">
-          <button class="add-btn" onclick="pfTab('photo')">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
-          <button class="add-btn ghost" onclick="pfTab('security')">${svg('key')}Change password</button>
-        </div>
-      </div>
-    </div>
-    <div class="pf-stat-row">
-      <div class="pf-stat-cell"><div class="pf-stat-num">${u.depts?u.depts.length:0}</div><div class="pf-stat-lbl">Departments</div></div>
-      <div class="pf-stat-cell"><div class="pf-stat-num">${perms.length}</div><div class="pf-stat-lbl">Permissions</div></div>
-      <div class="pf-stat-cell"><div class="pf-stat-num">${myLogs.length}</div><div class="pf-stat-lbl">Recent actions</div></div>
-      <div class="pf-stat-cell"><div class="pf-stat-num" style="font-size:13px;padding-top:4px">${esc(SESSION.isSuper?'All':'One')}</div><div class="pf-stat-lbl">Business scope</div></div>
-    </div>
-  </div>
+          <span class="tag">${svg('shield')} ${esc(curBiz()||'—')}</span></div>
+        <p style="margin:10px 0 0;color:var(--text-dim);font-size:13px">${esc(u.email)}</p></div></section>
 
-  <!-- TABS -->
-  <div class="pf-tabs">
-    <div class="pf-tab active" id="pftab-account" onclick="pfTab('account')">Account</div>
-    <div class="pf-tab" id="pftab-photo" onclick="pfTab('photo')">Photo &amp; Avatar</div>
-    <div class="pf-tab" id="pftab-security" onclick="pfTab('security')">Security</div>
-    <div class="pf-tab" id="pftab-activity" onclick="pfTab('activity')">Activity</div>
-  </div>
+    <div class="profile-grid" style="margin-top:18px">
+      <div class="panel glass"><div class="panel-h"><h3>Profile photo</h3></div>
+        <div style="display:flex;gap:16px;align-items:center;margin:6px 0 16px">${bigAvatarHTML()}
+          <div style="font-size:13px;color:var(--text-dim);line-height:1.6">Square photo best lagti hai.<br>Apne device se choose karo — sirf is browser me save hoti hai.</div></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="add-btn" onclick="pickAvatarPhoto()">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
+          ${hasImg?`<button class="add-btn ghost" onclick="removeAvatar()">${svg('trash')}Remove</button>`:''}</div>
+        ${hasImg?'':`<div style="margin-top:16px"><label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)">Avatar colour</label>
+          <div class="swatches" style="margin-top:8px">${GRADIENTS.map((g,i)=>`<div class="swatch ${i===getAvColor()?'sel':''}" style="background:${g}" onclick="setAvColor(${i})"></div>`).join('')}</div></div>`}
+      </div>
 
-  <!-- TAB: ACCOUNT -->
-  <div class="pf-body-wrap active" id="pfbody-account">
-    <div class="profile-grid">
-      <div class="panel glass">
-        <div class="panel-h"><h3>Account details</h3></div>
-        <div class="pf-field"><label>Full name</label><input id="p-name" value="${esc(u.name)}" placeholder="Your full name"></div>
-        <div class="pf-field"><label>Email address</label><input value="${esc(u.email)}" disabled></div>
-        <div class="profile-grid">
-          <div class="pf-field"><label>Role</label><input value="${esc(u.role)}" disabled></div>
-          <div class="pf-field"><label>Department</label><input value="${esc(u.dept||'—')}" disabled></div>
-        </div>
-        <button class="pbtn" onclick="saveProfile(event)">${svg('check')} Save changes</button>
-      </div>
-      <div class="panel glass">
-        <div class="panel-h"><h3>Access &amp; permissions</h3></div>
-        <div class="set-item" style="border:none"><span>Business</span><b style="font-size:13px;color:var(--text)">${esc(curBiz()||'—')}</b></div>
-        <div class="set-item"><span>Departments access</span><b style="color:var(--text)">${u.depts?u.depts.length:0}</b></div>
-        <div class="set-item"><span>Last login</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin||'—'}</span></div>
-        <div style="margin-top:16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin-bottom:10px">What you can do</div>
-        <div>${perms.map(p=>`<div class="pf-perm-item"><div class="pf-perm-dot"></div><div class="pf-perm-text">${p}</div></div>`).join('')}</div></div>
-      </div>
+      <div class="panel glass"><div class="panel-h"><h3>Account details</h3></div>
+        <div class="pf-field"><label>Full name</label><input id="p-name" value="${esc(u.name)}"></div>
+        <div class="pf-field"><label>Email</label><input value="${esc(u.email)}" disabled></div>
+        <div class="profile-grid"><div class="pf-field"><label>Role</label><input value="${esc(u.role)}" disabled></div><div class="pf-field"><label>Department</label><input value="${esc(u.dept||'—')}" disabled></div></div>
+        <button class="pbtn" onclick="saveProfile(event)">Save changes</button></div>
     </div>
-  </div>
 
-  <!-- TAB: PHOTO -->
-  <div class="pf-body-wrap" id="pfbody-photo">
-    <div class="profile-grid">
-      <div class="panel glass">
-        <div class="panel-h"><h3>Profile photo</h3></div>
-        <div style="display:flex;gap:18px;align-items:center;margin-bottom:20px">
-          <div class="pf-big-av" style="width:80px;height:80px;font-size:32px;border-radius:20px;background:${hasImg?'none':grad(getAvColor())}">${hasImg?`<img src="${getAvatar()}" style="width:100%;height:100%;object-fit:cover">`:esc(u.name[0]||'?')}</div>
-          <div style="font-size:13px;color:var(--text-dim);line-height:1.65"><b style="color:var(--text)">Square photo best dikhti hai</b><br>Device se choose karo — browser me locally save hoti hai.<br><span style="font-size:11.5px;color:var(--text-faint)">Max recommended: 2 MB · JPEG/PNG/WEBP</span></div>
-        </div>
-        <div onclick="pickAvatarPhoto()" class="pf-photo-zone">${svg('upload')}<h4 style="font-size:15px;font-weight:600;margin-bottom:5px">${hasImg?'Change your photo':'Upload a photo'}</h4><p style="font-size:12.5px;color:var(--text-faint)">Click to browse — or drag & drop</p></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="add-btn" onclick="pickAvatarPhoto()">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
-          ${hasImg?`<button class="add-btn ghost" onclick="removeAvatar()">${svg('trash')}Remove photo</button>`:''}
-        </div>
-      </div>
-      <div class="panel glass">
-        <div class="panel-h"><h3>Avatar colour</h3></div>
-        <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Photo nahi hai to initials avatar dikhta hai. Is ka colour choose karo:</p>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
-          ${GRADIENTS.map((g,i)=>`<div class="pf-av-opt ${i===getAvColor()?'sel':''}" style="background:${g}" onclick="setAvColor(${i})">${u.name[0]||'?'}</div>`).join('')}
-        </div>
-        <div style="font-size:12px;color:var(--text-faint);text-align:center">Click any colour to preview &amp; save</div>
-      </div>
+    <div class="profile-grid" style="margin-top:18px">
+      <div class="panel glass"><div class="panel-h"><h3>Access &amp; permissions</h3></div>
+        <div class="set-item" style="border:none"><span>Business</span><b style="font-size:13px">${esc(curBiz()||'—')}</b></div>
+        <div class="set-item"><span>Departments</span><b style="font-size:13px">${u.depts.length}</b></div>
+        <div class="set-item"><span>Signed in</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin}</span></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">${perms.map(p=>`<span class="tag">${p}</span>`).join('')}</div></div>
+      <div class="panel glass"><div class="panel-h"><h3>Password &amp; security</h3></div>
+        <div class="set-item" style="border:none"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA','Login pe OTP on hai.')"></div></div>
+        <div class="set-item"><span>Password</span><span style="font-size:12px;color:var(--text-faint)">••••••</span></div>
+        <button class="pbtn" style="margin-top:18px" onclick="openChangePwd()">${svg('key')} Change password</button></div>
     </div>
-  </div>
 
-  <!-- TAB: SECURITY -->
-  <div class="pf-body-wrap" id="pfbody-security">
-    <div class="profile-grid">
-      <div class="panel glass">
-        <div class="panel-h"><h3>Change password</h3></div>
-        <p style="font-size:13px;color:var(--text-dim);margin-bottom:18px">New password must be at least 6 characters.</p>
-        <div class="pf-field"><label>Current password</label><input type="password" id="cp-old-inline" placeholder="••••••"></div>
-        <div class="pf-field"><label>New password</label><input type="password" id="cp-new-inline" placeholder="6+ characters"></div>
-        <div class="pf-field"><label>Confirm new password</label><input type="password" id="cp-conf-inline" placeholder="Repeat new password"></div>
-        <button class="pbtn" onclick="saveChangePwdInline(event)">${svg('key')} Update password</button>
-      </div>
-      <div class="panel glass">
-        <div class="panel-h"><h3>Login &amp; security</h3></div>
-        <div class="set-item" style="border:none"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA enabled','Login pe OTP on hai — yeh nahi badla ja sakta.')"></div></div>
-        <div class="set-item"><span>Current session</span><span style="font-size:12px;color:var(--ok)">Active</span></div>
-        <div class="set-item"><span>Session keep-alive</span><span style="font-size:12px;color:var(--text-faint)">${CONFIG.SESSION_HOURS}h</span></div>
-        <div class="set-item"><span>Last login</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin||'—'}</span></div>
-        <button class="add-btn ghost" style="margin-top:18px;width:100%;justify-content:center" onclick="logout()">${svg('logout')} Sign out of this device</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: ACTIVITY -->
-  <div class="pf-body-wrap" id="pfbody-activity">
-    <div class="panel glass">
-      <div class="panel-h"><h3>My recent activity</h3><a class="link" style="font-size:12px" onclick="go('admin');setTimeout(()=>adminTab('logs'),80)">View all logs</a></div>
-      <div class="activity">${myLogs.length?myLogs.map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt">You ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join(''):'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4><p>Your actions will appear here.</p></div>'}</div>
-    </div>
-  </div>`;}
-function pfTab(t){['account','photo','security','activity'].forEach(k=>{const tb=document.getElementById('pftab-'+k),bd=document.getElementById('pfbody-'+k);if(tb)tb.classList.toggle('active',k===t);if(bd)bd.classList.toggle('active',k===t);});}
-function saveChangePwdInline(ev){const o=document.getElementById('cp-old-inline').value,n=document.getElementById('cp-new-inline').value,c=document.getElementById('cp-conf-inline').value;
-  if(!o||!n){toast('warn','Missing','Fill all fields.');return;}if(n.length<6){toast('warn','Too short','New password 6+ chars.');return;}if(n!==c){toast('warn','Mismatch','New passwords do not match.');return;}
-  withBtn(ev&&ev.target,'Updating',async()=>{const r=await api('changePassword',{email:SESSION.user.email,oldPwd:o,newPwd:n});
-    if(r.ok){document.getElementById('cp-old-inline').value='';document.getElementById('cp-new-inline').value='';document.getElementById('cp-conf-inline').value='';toast('ok','Password changed','Use the new password next time.');}else toast('warn','Failed',r.error||'Could not change.');});}
+    <div class="panel glass" style="margin-top:18px"><div class="panel-h"><h3>My recent activity</h3></div>
+      <div class="activity">${(DB.logs||[]).filter(l=>l.who===u.name).slice(0,5).map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt">You ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join('')||'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4></div>'}</div></div>`;}
 function saveProfile(ev){const name=document.getElementById('p-name').value.trim();if(!name)return;
   withBtn(ev&&ev.target,'Saving',async()=>{if(live()){await api('updateUser',{id:findMyId(),name,email:SESSION.user.email,role:SESSION.user.role,dept:SESSION.user.dept,status:'active'});}
     SESSION.user.name=name;saveSession();document.getElementById('sb-name').textContent=name;document.getElementById('sb-avatar').textContent=name[0];toast('ok','Profile saved','Your details were updated.');});}
