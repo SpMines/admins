@@ -116,6 +116,10 @@ a{color:inherit;text-decoration:none}
 .sb-brand .t{font-size:15px;font-weight:600;line-height:1.15}
 .sb-brand .t b{background:var(--grad-bp);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sb-brand .t span{display:block;font-size:9.5px;letter-spacing:2px;color:var(--text-faint);text-transform:uppercase}
+.biz-switch{padding:10px 8px 4px}
+.biz-switch label{display:block;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-faint);margin:0 4px 6px}
+.biz-switch select{width:100%;padding:9px 11px;background:linear-gradient(100deg,rgba(77,124,255,.16),rgba(168,85,247,.12));border:1px solid var(--glass-border);border-radius:11px;color:var(--text);font-size:13px;font-weight:500}
+.biz-switch select:focus{outline:none;border-color:var(--neon-purple)}
 .sb-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);padding:14px 12px 6px;display:flex;justify-content:space-between;align-items:center}
 .sb-label .add-mini{cursor:pointer;color:var(--neon-blue);width:18px;height:18px;display:grid;place-items:center;border-radius:6px}
 .sb-label .add-mini:hover{background:rgba(77,124,255,.15)}
@@ -423,9 +427,10 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     <div class="err" id="reg-err"></div>
     <div class="field"><label>Full name</label><div class="input-wrap"><span id="i-user"></span><input id="reg-name" placeholder="Your full name"></div></div>
     <div class="field"><label>Email address</label><div class="input-wrap"><span id="i-mail3"></span><input type="email" id="reg-email" placeholder="you@company.com"></div></div>
+    <div class="field"><label>Business you belong to</label><div class="input-wrap"><select id="reg-biz" style="width:100%;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--glass-border-soft);border-radius:12px;color:var(--text);font-size:14px"><option value="">Select business</option></select></div></div>
     <div class="field"><label>Which department / why <span style="color:var(--text-faint)">(optional)</span></label>
       <div class="input-wrap"><textarea id="reg-reason" placeholder="e.g. Sales team — need access to quotations"></textarea></div></div>
-    <button class="pbtn" onclick="submitRequest(event)">Send request to admin</button>
+    <button class="pbtn" onclick="submitRequest(event)">Send request</button>
     <p class="auth-foot"><a onclick="showAuth('login')">← Back to sign in</a></p>
   </div>
 
@@ -518,7 +523,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbzwRPVr-xSG1f7gHmsw83oFuQXTYTFABG6z4JvncPExjvbI3drAnRGhbwd4lI7bFy_P/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbyHW8RIbJzn7ZSzeNGdln-ZE-ZVuV8H_6jROy55styKkukq5qr85LLjQGA1vpk85phA/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -535,7 +540,7 @@ async function api(action, payload = {}){
     if(!live()) return await mockApi(action, payload);
     const res = await fetch(CONFIG.GAS_URL, {
       method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ action, ...payload, by: SESSION.user ? SESSION.user.name : '' })
+      body: JSON.stringify({ action, business: curBiz(), ...payload, by: SESSION.user ? SESSION.user.name : '', me: SESSION.user ? SESSION.user.email : '' })
     });
     return await res.json();
   }catch(err){ console.error(err); toast('warn','Connection error','Could not reach backend.'); return { ok:false, error:String(err) }; }
@@ -593,12 +598,14 @@ const ICON_CHOICES=['building','doc','activity','bolt','settings','process','dow
 const CATEGORIES=[{n:'Processes',ic:'process'},{n:'Google Forms',ic:'form'},{n:'Training Videos',ic:'video'},{n:'Flowcharts',ic:'flow'},{n:'PMS',ic:'target'},{n:'Checklists',ic:'list'},{n:'Files',ic:'file'}];
 const catIcon=n=>(CATEGORIES.find(c=>c.n===n)||{ic:'file'}).ic;
 const ROLES={
-  'Super Admin':{cls:'r-super',admin:'full',canManageDepts:true,can:{view:1,edit:1,upload:1,delete:1},depts:'ALL',desc:'Unrestricted control over every department, user, and system setting.'},
-  'Admin':{cls:'r-admin',admin:'limited',canManageDepts:true,can:{view:1,edit:1,upload:1,delete:1},depts:'ALL',desc:'Full department & user management. System Settings are read-only.'},
-  'Department Manager':{cls:'r-manager',admin:false,canManageDepts:true,can:{view:1,edit:1,upload:1,delete:1},depts:'ALL',desc:'Add & manage departments and their content across the workspace.'},
-  'Employee':{cls:'r-employee',admin:false,canManageDepts:false,can:{view:1,edit:0,upload:1,delete:0},depts:'ALL',desc:'View departments and upload documents.'},
-  'Viewer':{cls:'r-viewer',admin:false,canManageDepts:false,can:{view:1,edit:0,upload:0,delete:0},depts:'ALL',desc:'Read-only access across departments.'}
+  'Super Admin':{cls:'r-super',admin:'full',isSuper:true,canManageDepts:true,canUsers:true,canApprove:true,canBiz:true,add:1,editAll:1,del:1,desc:'Every business, every department, full control. Creates businesses & admins.'},
+  'Admin':{cls:'r-admin',admin:'business',canManageDepts:true,canUsers:true,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Full control of your own business only. Other businesses stay hidden.'},
+  'Department Manager':{cls:'r-manager',admin:'manager',canManageDepts:true,canUsers:false,canApprove:true,canBiz:false,add:1,editAll:1,del:1,desc:'Department boss — add/edit/delete content in your business and approve requests.'},
+  'Employee':{cls:'r-employee',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:1,editAll:0,del:0,desc:'Add anything, edit only what you created. Delete needs a manager.'},
+  'Viewer':{cls:'r-viewer',admin:false,canManageDepts:false,canUsers:false,canApprove:false,canBiz:false,add:0,editAll:0,del:0,desc:'Read-only access within your business.'}
 };
+function R(){return ROLES[SESSION.user.role]||ROLES['Viewer'];}
+function curBiz(){return SESSION.business||(SESSION.user&&SESSION.user.business)||'';}
 
 /* ---------- mock (fallback only; backend is live) ---------- */
 let MOCK_OTP='';
@@ -617,8 +624,8 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{
 },300));}
 
 /* ---------- state ---------- */
-let DEPARTMENTS=[], ITEMS={}, DB={users:[],logs:[],requests:[]};
-let SESSION={user:null,view:'dashboard',dept:null,deptTab:'Processes',pendingUser:null,otp:'',otpTimer:null,remember:true};
+let DEPARTMENTS=[], ITEMS={}, DB={users:[],logs:[],requests:[]}, BUSINESSES=[];
+let SESSION={user:null,view:'dashboard',dept:null,deptTab:'Processes',pendingUser:null,otp:'',otpTimer:null,remember:true,business:'',isSuper:false};
 const clone=o=>JSON.parse(JSON.stringify(o));
 
 /* ---------- session persistence ---------- */
@@ -628,7 +635,8 @@ function clearSession(){try{localStorage.removeItem('smp_session');}catch(e){}}
 
 /* ================= AUTH ================= */
 function showAuth(w){['login','register','otp','forgot'].forEach(v=>document.getElementById('view-'+v).style.display=v===w?'block':'none');
-  ['login-err','reg-err','otp-err','forgot-err'].forEach(e=>document.getElementById(e).classList.remove('show'));}
+  ['login-err','reg-err','otp-err','forgot-err'].forEach(e=>document.getElementById(e).classList.remove('show'));
+  if(w==='register')loadRegBusinesses();}
 function fail(id,m){const e=document.getElementById(id);e.textContent=m;e.classList.add('show');}
 function togglePass(i,e){const a=document.getElementById(i),b=document.getElementById(e);if(a.type==='password'){a.type='text';b.innerHTML=svg('eyeoff');}else{a.type='password';b.innerHTML=svg('eye');}}
 
@@ -655,7 +663,7 @@ async function onGoogleCred(resp){const pl=jwtPayload(resp.credential),email=pl.
   if(!email){toast('warn','Google','Could not read account.');return;}
   const r=await api('googleLogin',{email});
   if(r.ok){SESSION.remember=true;SESSION.pendingUser=r.user;enterApp(r.user);} // Google already verified identity -> skip OTP
-  else{showAuth('register');document.getElementById('reg-name').value=name;document.getElementById('reg-email').value=email;
+  else{showAuth('register');loadRegBusinesses();document.getElementById('reg-name').value=name;document.getElementById('reg-email').value=email;
     toast('info','No account yet','Request access — admin will approve.');}}
 function googleSignIn(){toast('info','Set up needed','Admin: add GOOGLE_CLIENT_ID in the file to enable real Google sign-in.');}
 
@@ -680,52 +688,71 @@ function wireOtp(){const box=document.querySelectorAll('#otp-box input');
     inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)box[i-1].focus();if(e.key==='Enter')verifyOtp();});
     inp.addEventListener('paste',e=>{e.preventDefault();const d=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);d.split('').forEach((c,j)=>{if(box[j])box[j].value=c;});if(box[Math.min(d.length,5)])box[Math.min(d.length,5)].focus();});});}
 
-function submitRequest(ev){const name=document.getElementById('reg-name').value.trim(),email=document.getElementById('reg-email').value.trim(),reason=document.getElementById('reg-reason').value.trim();
+function submitRequest(ev){const name=document.getElementById('reg-name').value.trim(),email=document.getElementById('reg-email').value.trim(),reason=document.getElementById('reg-reason').value.trim(),business=document.getElementById('reg-biz').value;
   if(!name||!email){fail('reg-err','Name and email are required.');return;}
-  withBtn(ev&&ev.target,'Sending',async()=>{const r=await api('requestAccess',{name,email,reason});
-    if(r.ok){toast('ok','Request sent','Admin will review and email your login.');showAuth('login');}
+  if(!business){fail('reg-err','Please select your business.');return;}
+  withBtn(ev&&ev.target,'Sending',async()=>{const r=await api('requestAccess',{name,email,reason,business});
+    if(r.ok){toast('ok','Request sent','It goes to your business managers/admin — they will email your login.');showAuth('login');}
     else fail('reg-err',r.error||'Could not send request.');});}
+let REG_BIZ_LOADED=false;
+async function loadRegBusinesses(){if(REG_BIZ_LOADED)return;const sel=document.getElementById('reg-biz');
+  try{const r=await api('getBusinessesPublic',{});if(r.ok&&r.businesses){sel.innerHTML='<option value="">Select business</option>'+r.businesses.map(b=>`<option>${esc(b.name)}</option>`).join('');REG_BIZ_LOADED=true;}}catch(e){}}
 function sendReset(ev){const email=document.getElementById('forgot-email').value.trim();
   if(!email){fail('forgot-err','Please enter your email address.');return;}
   withBtn(ev&&ev.target,'Sending',async()=>{await api('requestAccess',{name:email,email,reason:'PASSWORD RESET REQUEST'});
     toast('ok','Request sent','Ask your admin to reset it — they have been notified.');showAuth('login');});}
 
 /* ================= ENTER / EXIT ================= */
-async function enterApp(user){SESSION.user=user;saveSession();
+async function enterApp(user){SESSION.user=user;SESSION.business=user.business||'';saveSession();
   document.getElementById('auth').style.display='none';document.getElementById('app').classList.add('show');
   document.getElementById('sb-avatar').textContent=user.name[0];document.getElementById('sb-name').textContent=user.name;document.getElementById('sb-role').textContent=user.role;
   document.getElementById('v-dashboard').innerHTML='<div class="spinner"></div>';
   await bootstrapData();computeDepts();
-  const role=ROLES[user.role]||ROLES['Viewer'];
+  const role=R();
   document.getElementById('sb-add-dept').style.display=role.canManageDepts?'':'none';
-  document.getElementById('admin-nav').style.display=role.admin?'':'none';
-  document.getElementById('admin-label').style.display=role.admin?'':'none';
-  buildDeptNav();buildNotifs();updateReqBadge();go('dashboard');
-  toast('ok','Welcome, '+user.name.split(' ')[0]+'!','Signed in as '+user.role);}
+  const showAdmin=!!(role.admin||role.canApprove||role.canUsers);
+  document.getElementById('admin-nav').style.display=showAdmin?'':'none';
+  document.getElementById('admin-label').style.display=showAdmin?'':'none';
+  buildBizSwitcher();buildDeptNav();buildNotifs();updateReqBadge();go('dashboard');
+  toast('ok','Welcome, '+user.name.split(' ')[0]+'!',(SESSION.isSuper?'Super Admin · all businesses':user.role+' · '+(SESSION.business||'—')));}
 async function bootstrapData(){
   if(live()){const r=await api('bootstrap',{email:SESSION.user.email,role:SESSION.user.role});
-    if(r.ok){DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}}
-  else{DEPARTMENTS=clone(SEED_DEPTS);DB.users=[{id:'u0',name:'Administrator',email:'admin@systemsmaster.com',role:'Super Admin',dept:'Directors',status:'active',last:'now'}];DB.logs=[];DB.requests=[];}
+    if(r.ok){BUSINESSES=r.businesses||[];SESSION.isSuper=!!r.isSuper;
+      SESSION.business=r.viewBusiness||SESSION.user.business||(BUSINESSES[0]?BUSINESSES[0].name:'');
+      DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}}
+  else{BUSINESSES=[{id:'b0',name:'Default Business',color:0}];SESSION.isSuper=true;SESSION.business='Default Business';
+    DEPARTMENTS=clone(SEED_DEPTS);DB.users=[{id:'u0',name:'Administrator',email:'admin@systemsmaster.com',role:'Super Admin',business:'Default Business',dept:'Directors',status:'active',last:'now'}];DB.logs=[];DB.requests=[];}
   ITEMS={};}
-function computeDepts(){const role=ROLES[SESSION.user.role]||ROLES['Viewer'];const names=DEPARTMENTS.map(d=>d.name);
-  SESSION.user.depts=role.depts==='ALL'?names:role.depts.filter(n=>names.includes(n));
+function computeDepts(){const names=DEPARTMENTS.map(d=>d.name);
+  SESSION.user.depts=names;
   SESSION.user.lastLogin=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});}
+async function switchBiz(name){if(name===SESSION.business)return;SESSION.business=name;ITEMS={};
+  await bootstrapData();computeDepts();buildDeptNav();updateReqBadge();go('dashboard');toast('info','Business switched',name);}
 function logout(){clearInterval(SESSION.otpTimer);clearSession();
-  SESSION={user:null,view:'dashboard',dept:null,deptTab:'Processes',pendingUser:null,otp:'',otpTimer:null,remember:true};
-  DEPARTMENTS=[];ITEMS={};DB={users:[],logs:[],requests:[]};
+  SESSION={user:null,view:'dashboard',dept:null,deptTab:'Processes',pendingUser:null,otp:'',otpTimer:null,remember:true,business:'',isSuper:false};
+  DEPARTMENTS=[];ITEMS={};DB={users:[],logs:[],requests:[]};BUSINESSES=[];
   document.getElementById('app').classList.remove('show');document.getElementById('auth').style.display='flex';
   document.getElementById('admin-nav').style.display='none';document.getElementById('admin-label').style.display='none';document.getElementById('sb-add-dept').style.display='none';
+  const sw=document.getElementById('biz-switch');if(sw)sw.remove();
   showAuth('login');document.getElementById('login-pass').value='';}
-async function refreshAll(){await bootstrapData();computeDepts();buildDeptNav();updateReqBadge();
+async function refreshAll(){await bootstrapData();computeDepts();buildBizSwitcher();buildDeptNav();updateReqBadge();
   if(SESSION.view==='dashboard')renderDashboard();else if(SESSION.view==='dept'){ITEMS[SESSION.dept]=null;openDept(SESSION.dept);}else if(SESSION.view==='admin')renderAdmin();else if(SESSION.view==='profile')renderProfile();
   toast('ok','Refreshed','Latest data loaded.');}
 function updateReqBadge(){const n=(DB.requests||[]).length,b=document.getElementById('req-badge');
-  if(n>0&&(ROLES[SESSION.user.role]||{}).admin){b.style.display='';b.textContent=n;}else b.style.display='none';}
+  if(n>0&&R().canApprove){b.style.display='';b.textContent=n;}else b.style.display='none';}
+
+/* ---------- business switcher (Super Admin) ---------- */
+function buildBizSwitcher(){let host=document.getElementById('biz-switch');
+  if(!SESSION.isSuper||BUSINESSES.length<1){if(host)host.remove();return;}
+  if(!host){host=document.createElement('div');host.id='biz-switch';host.className='biz-switch';
+    const brand=document.querySelector('.sb-brand');brand.parentNode.insertBefore(host,brand.nextSibling);}
+  host.innerHTML=`<label>Viewing business</label><select onchange="switchBiz(this.value)">${BUSINESSES.map(b=>`<option ${b.name===SESSION.business?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`;}
 
 /* ---------- sidebar ---------- */
 function deptByName(n){return DEPARTMENTS.find(d=>d.name===n);}
 function buildDeptNav(){const wrap=document.getElementById('dept-nav');wrap.innerHTML='';
-  SESSION.user.depts.forEach(n=>{const d=deptByName(n);if(!d)return;const a=document.createElement('div');a.className='nav-item';a.dataset.nav='dept:'+n;a.onclick=()=>openDept(n);a.innerHTML=svg(d.icon)+`<span>${n}</span>`;wrap.appendChild(a);});}
+  SESSION.user.depts.forEach(n=>{const d=deptByName(n);if(!d)return;const a=document.createElement('div');a.className='nav-item';a.dataset.nav='dept:'+n;a.onclick=()=>openDept(n);a.innerHTML=svg(d.icon)+`<span>${n}</span>`;wrap.appendChild(a);});
+  if(!SESSION.user.depts.length)wrap.innerHTML='<div style="padding:10px 13px;font-size:12px;color:var(--text-faint)">No departments yet</div>';}
 function setActiveNav(k){document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===k));}
 
 /* ================= ROUTER ================= */
@@ -742,21 +769,21 @@ function setTitle(t,s){document.getElementById('pg-title').childNodes[0].nodeVal
 async function loadItems(dept){if(live()){const r=await api('getItems',{dept});ITEMS[dept]=r.items||[];}else if(!ITEMS[dept])ITEMS[dept]=seedItems(dept);return ITEMS[dept];}
 
 /* ================= DASHBOARD ================= */
-function renderDashboard(){const u=SESSION.user,role=ROLES[u.role]||ROLES['Viewer'];
+function renderDashboard(){const u=SESSION.user,role=R();
   const hr=new Date().getHours();const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   const docCount=Object.values(ITEMS).reduce((a,x)=>a+(x?x.length:0),0);
-  const stats=[{ic:'building',g:grad(0),num:u.depts.length,lbl:'Departments'},{ic:'doc',g:grad(1),num:docCount||'—',lbl:'Loaded documents'},{ic:'users',g:grad(3),num:(DB.users||[]).filter(x=>x.status==='active').length||'—',lbl:'Active users'},{ic:'activity',g:grad(4),num:'Live',lbl:'Backend status'}];
+  const stats=[{ic:'building',g:grad(0),num:u.depts.length,lbl:'Departments'},{ic:'doc',g:grad(1),num:docCount||'—',lbl:'Loaded documents'},{ic:'users',g:grad(3),num:(DB.users||[]).filter(x=>x.status==='active').length||'—',lbl:'Active users'},(SESSION.isSuper?{ic:'shield',g:grad(5),num:BUSINESSES.length,lbl:'Businesses'}:{ic:'activity',g:grad(4),num:'Live',lbl:'Backend status'})];
   document.getElementById('v-dashboard').innerHTML=`
     <section class="hero glass"><h1>${greet}, <span>${u.name.split(' ')[0]}</span> 👋</h1><p>${role.desc}</p>
-      <div class="meta"><div>Role · <b>${u.role}</b></div><div>Access · <b>${u.depts.length} department${u.depts.length!==1?'s':''}</b></div>
-        <div>Backend · <b>${live()?'Google Sheets (live)':'Demo'}</b></div><div>Signed in · <b>${u.lastLogin}</b></div></div></section>
+      <div class="meta"><div>Role · <b>${u.role}</b></div><div>Business · <b>${esc(SESSION.isSuper?(SESSION.business||'—')+' (switchable)':curBiz()||'—')}</b></div>
+        <div>Access · <b>${u.depts.length} department${u.depts.length!==1?'s':''}</b></div><div>Signed in · <b>${u.lastLogin}</b></div></div></section>
     <div class="stat-grid">${stats.map(s=>`<div class="stat glass"><div class="top"><div class="ico" style="background:${s.g}">${svg(s.ic)}</div></div><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('')}</div>
     <div class="grid-2">
       <div class="panel glass"><div class="panel-h"><h3>Document activity</h3><a class="link">Last 7 days</a></div><div id="chart-main"></div></div>
       <div class="panel glass"><div class="panel-h"><h3>Recent activity</h3>${role.admin?`<a class="link" onclick="go('admin');setTimeout(()=>adminTab('logs'),60)">View all</a>`:''}</div>
         <div class="activity">${(DB.logs||[]).slice(0,6).map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt"><span class="who">${l.who}</span> ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join('')||'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4></div>'}</div></div>
     </div>
-    <div class="panel-h" style="margin:8px 4px 16px"><h3>Your departments</h3><a class="link">${u.depts.length} accessible</a></div>
+    <div class="panel-h" style="margin:8px 4px 16px"><h3>Departments — ${esc(curBiz()||'—')}</h3><a class="link">${u.depts.length} accessible</a></div>
     <div class="dept-quick">${u.depts.map(n=>{const d=deptByName(n);const canM=role.canManageDepts;return`
       <div class="dqc glass" onclick="openDept('${n}')"><div class="ico" style="background:${grad(d.color)}">${svg(d.icon)}</div>
         <div class="n">${n}</div><div class="c">${ITEMS[n]?ITEMS[n].length+' items':'Open workspace'}</div>
@@ -769,11 +796,15 @@ function drawChart(){const el=document.getElementById('chart-main');if(!el)retur
   const c=echarts.init(el);c.setOption({grid:{left:6,right:6,top:30,bottom:24,containLabel:true},legend:{data:['Uploads','Edits'],textStyle:{color:'#a7abcf',fontFamily:'Jost'},right:0,top:0,icon:'roundRect'},tooltip:{trigger:'axis',backgroundColor:'rgba(17,16,46,.95)',borderColor:'rgba(255,255,255,.12)',textStyle:{color:'#eef0ff',fontFamily:'Jost'}},xAxis:{type:'category',data:days,axisLine:{lineStyle:{color:'rgba(255,255,255,.12)'}},axisLabel:{color:'#6a6e94',fontFamily:'Jost'}},yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(255,255,255,.05)'}},axisLabel:{color:'#6a6e94',fontFamily:'Jost'}},series:[{name:'Uploads',type:'bar',data:up,barWidth:14,itemStyle:{borderRadius:[6,6,0,0],color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#4d7cff'},{offset:1,color:'#a855f7'}])}},{name:'Edits',type:'line',data:ed,smooth:true,symbol:'circle',symbolSize:7,lineStyle:{width:3,color:'#26d6f5'},itemStyle:{color:'#26d6f5'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(38,214,245,.25)'},{offset:1,color:'rgba(38,214,245,0)'}])}}]});window.addEventListener('resize',()=>c.resize());}
 
 /* ================= DEPARTMENT PAGE ================= */
-function can(c){return !!(ROLES[SESSION.user.role]||ROLES['Viewer']).can[c];}
-function renderDept(){const n=SESSION.dept,d=deptByName(n),role=ROLES[SESSION.user.role]||ROLES['Viewer'];
+function canAddItem(){return !!R().add;}
+function canUpload(){return !!R().add;}
+function isMine(it){return String(it.createdBy||'').toLowerCase()===String(SESSION.user.email||'').toLowerCase();}
+function canEditItem(it){const r=R();if(r.editAll)return true;if(!r.add)return false;return isMine(it);}
+function canDelItem(){return !!R().del;}
+function renderDept(){const n=SESSION.dept,d=deptByName(n),role=R();
   document.getElementById('v-dept').innerHTML=`
     <section class="dept-hero glass"><div class="big-ico" style="background:${grad(d.color)}">${svg(d.icon)}</div>
-      <div><h1>${n}</h1><p>${d.desc||''}</p></div>
+      <div><h1>${n}</h1><p>${d.desc||''}</p><div style="font-size:11.5px;color:var(--text-faint);margin-top:4px">${esc(curBiz())}</div></div>
       ${role.canManageDepts?`<div class="dept-actions"><button class="add-btn ghost" onclick="openDeptModal('${d.id}')">${svg('edit')}Edit</button></div>`:''}</section>
     <div class="tabs" id="dept-tabs">${CATEGORIES.map(t=>`<button class="tab ${t.n===SESSION.deptTab?'active':''}" onclick="setDeptTab('${t.n}')">${svg(t.ic)}${t.n}</button>`).join('')}</div>
     <div id="dept-body"></div>`;
@@ -781,18 +812,18 @@ function renderDept(){const n=SESSION.dept,d=deptByName(n),role=ROLES[SESSION.us
 function setDeptTab(t){SESSION.deptTab=t;document.querySelectorAll('#dept-tabs .tab').forEach(b=>b.classList.toggle('active',b.textContent.trim()===t));renderDeptTab();}
 function renderDeptTab(){const dept=SESSION.dept,t=SESSION.deptTab,body=document.getElementById('dept-body');
   const list=(ITEMS[dept]||[]).filter(it=>it.category===t);
-  const canAdd=can('edit')||(t==='Files'&&can('upload'));
-  const btns=it=>`<div class="mini-btns">${it.url?`<button class="mini-btn" title="Open" onclick="window.open('${it.url}','_blank')">${svg('external')}</button>`:''}
-    <button class="mini-btn" ${can('edit')?'':'disabled'} title="${can('edit')?'Edit':'No permission'}" onclick="${can('edit')?`openItemModal('${it.id}')`:`toast('warn','Permission denied','Your role cannot edit.')`}">${svg('edit')}</button>
-    <button class="mini-btn" ${can('delete')?'':'disabled'} title="${can('delete')?'Delete':'No permission'}" onclick="${can('delete')?`delItem('${it.id}')`:`toast('warn','Permission denied','Your role cannot delete.')`}">${svg('trash')}</button></div>`;
+  const canAdd=canAddItem();
+  const btns=it=>{const ce=canEditItem(it),cd=canDelItem();return `<div class="mini-btns">${it.url?`<button class="mini-btn" title="Open" onclick="window.open('${it.url}','_blank')">${svg('external')}</button>`:''}
+    <button class="mini-btn" ${ce?'':'disabled'} title="${ce?'Edit':'Only the creator (or a manager) can edit'}" onclick="${ce?`openItemModal('${it.id}')`:`toast('warn','Cannot edit','Sirf jisne banaya wahi (ya manager) edit kar sakta.')`}">${svg('edit')}</button>
+    <button class="mini-btn" ${cd?'':'disabled'} title="${cd?'Delete':'Delete needs manager/admin'}" onclick="${cd?`delItem('${it.id}')`:`toast('warn','Cannot delete','Delete ke liye Manager/Admin access chahiye.')`}">${svg('trash')}</button></div>`;};
   if(t==='Training Videos'){
     body.innerHTML=`<div class="cards">${list.map(it=>`<div class="vid glass"><div class="thumb" onclick="playVideoById('${it.id}')">${svg('play')}<span class="len">${it.meta||''}</span></div>
       <div class="vb"><h4>${it.title}</h4><div class="vfoot"><p>Tap to play</p>${btns(it)}</div></div></div>`).join('')}
       ${canAdd?`<div class="card add-card" onclick="openItemModal()">${svg('plus')}<div style="color:var(--text-dim);font-size:13px">Add video link</div></div>`:''}</div>${list.length?'':empty(canAdd)}`;return;}
   if(t==='Files'){
-    body.innerHTML=`${can('upload')?`<div class="upload-zone" onclick="pickFile()">${svg('upload')}<h4>Upload to Google Drive</h4><p>Click to choose a file — auto-sorted into Documents / Images / Videos folders</p></div>`:`<div class="upload-zone" style="cursor:not-allowed;opacity:.5">${svg('lock')}<h4>Upload not permitted</h4><p>Your role has view-only access here.</p></div>`}
+    body.innerHTML=`${canUpload()?`<div class="upload-zone" onclick="pickFile()">${svg('upload')}<h4>Upload to Google Drive</h4><p>Click to choose a file — auto-sorted into Documents / Images / Videos folders</p></div>`:`<div class="upload-zone" style="cursor:not-allowed;opacity:.5">${svg('lock')}<h4>Upload not permitted</h4><p>Your role has view-only access here.</p></div>`}
       <div class="cards">${list.map(it=>`<div class="card glass"><div class="ch"><div class="ci">${svg('file')}</div><div><div class="t">${it.title}</div><div class="s">${it.meta||''}</div></div></div><div class="card-foot"><span class="tag">Files</span>${btns(it)}</div></div>`).join('')}
-        ${can('edit')?`<div class="card add-card" onclick="openItemModal()">${svg('plus')}<div style="color:var(--text-dim);font-size:13px">Add file link</div></div>`:''}</div>${list.length?'':empty(can('upload'),'Upload your first file.')}`;return;}
+        ${canAdd?`<div class="card add-card" onclick="openItemModal()">${svg('plus')}<div style="color:var(--text-dim);font-size:13px">Add file link</div></div>`:''}</div>${list.length?'':empty(canUpload(),'Upload your first file.')}`;return;}
   body.innerHTML=`<div class="cards">${list.map(it=>`<div class="card glass"><div class="ch"><div class="ci">${svg(catIcon(t))}</div><div><div class="t">${it.title}</div><div class="s">${it.meta||''}</div></div></div>
     <div class="desc">${it.description||''}</div><div class="card-foot"><span class="tag">${t}</span>${btns(it)}</div></div>`).join('')}
     ${canAdd?`<div class="card add-card" onclick="openItemModal()">${svg('plus')}<div style="color:var(--text-dim);font-size:13px">Add ${t.replace(/s$/,'').toLowerCase()}</div></div>`:''}</div>${list.length?'':empty(canAdd)}`;}
@@ -870,39 +901,56 @@ function delDept(id){const d=DEPARTMENTS.find(x=>x.id===id);
     toast('warn','Department deleted',d.name);});}
 
 /* ================= ADMIN PANEL ================= */
-let ADMIN_TAB='users';
-function renderAdmin(){if(!(ROLES[SESSION.user.role]||{}).admin){go('dashboard');return;}
-  const tabs=[['users','Users','users'],['requests','Requests','mail'],['perms','Permissions','shield'],['logs','Audit Logs','activity'],['depts','Departments','building'],['settings','Settings','settings']];
+let ADMIN_TAB='requests';
+function renderAdmin(){const role=R();if(!(role.admin||role.canApprove||role.canUsers)){go('dashboard');return;}
+  let tabs=[];
+  if(role.canApprove)tabs.push(['requests','Requests','mail']);
+  if(role.canUsers)tabs.push(['users','Users','users']);
+  if(role.canManageDepts)tabs.push(['depts','Departments','building']);
+  if(role.isSuper)tabs.push(['biz','Businesses','shield']);
+  if(role.admin)tabs.push(['perms','Permissions','star']);
+  if(role.admin)tabs.push(['logs','Audit Logs','activity']);
+  if(role.admin)tabs.push(['settings','Settings','settings']);
+  if(!tabs.some(t=>t[0]===ADMIN_TAB))ADMIN_TAB=tabs[0][0];
   document.getElementById('v-admin').innerHTML=`<div class="admin-tabs">${tabs.map(([k,l,ic])=>`<button class="atab ${k===ADMIN_TAB?'active':''}" onclick="adminTab('${k}')">${svg(ic)}${l}${k==='requests'&&DB.requests.length?`<span class="nb">${DB.requests.length}</span>`:''}</button>`).join('')}</div><div id="admin-body"></div>`;
   renderAdminTab();}
 function adminTab(k){ADMIN_TAB=k;renderAdmin();}
-function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.user.role==='Super Admin';
+function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.isSuper,role=R();
+  if(ADMIN_TAB==='biz'){
+    b.innerHTML=`<div class="toolbar"><h3>Businesses <span class="tag">${BUSINESSES.length}</span></h3><button class="add-btn" onclick="openBizModal()">${svg('plus')}New business</button></div>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Har business apne Admin ke under hota hai — ek admin sirf apna business dekhega. Naya business banao + uska admin set karo.</p>
+      <div class="dept-quick">${BUSINESSES.map(x=>{const du=DB.users.filter(u=>u.business===x.name).length;return`<div class="dqc glass" onclick="switchBiz('${esc(x.name)}')"><div class="ico" style="background:${grad(x.color)}">${svg('shield')}</div><div class="n">${esc(x.name)}</div><div class="c">view workspace</div><div class="edit-fab"><button onclick="event.stopPropagation();openBizModal('${x.id}')">${svg('edit')}</button><button onclick="event.stopPropagation();delBiz('${x.id}')">${svg('trash')}</button></div></div>`;}).join('')}<div class="dqc add-dept glass" onclick="openBizModal()">${svg('plus')}<div class="n">New business</div></div></div>`;return;}
   if(ADMIN_TAB==='users'){
-    b.innerHTML=`<div class="toolbar"><h3>Users <span class="tag">${DB.users.length} total</span></h3><button class="add-btn" onclick="openUserModal()">${svg('plus')}Add user</button></div>
-      <div class="table-wrap glass"><table><thead><tr><th>User</th><th>Role</th><th>Department</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
+    b.innerHTML=`<div class="toolbar"><h3>Users <span class="tag">${DB.users.length} in ${esc(curBiz())}</span></h3><button class="add-btn" onclick="openUserModal()">${svg('plus')}Add user</button></div>
+      <div class="table-wrap glass"><table><thead><tr><th>User</th><th>Role</th>${isSuper?'<th>Business</th>':''}<th>Department</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
       ${DB.users.map(u=>`<tr><td><div class="u-cell"><div class="avatar">${u.name[0]}</div><div><div class="nm">${u.name}</div><div class="em">${u.email}</div></div></div></td>
-        <td><span class="role-chip ${(ROLES[u.role]||{cls:'r-viewer'}).cls}">${dot()}${u.role}</span></td><td>${u.dept||'—'}</td>
+        <td><span class="role-chip ${(ROLES[u.role]||{cls:'r-viewer'}).cls}">${dot()}${u.role}</span></td>${isSuper?`<td>${esc(u.business||'—')}</td>`:''}<td>${u.dept||'—'}</td>
         <td><span class="status-chip ${u.status==='active'?'s-active':'s-off'}"><span class="sd"></span>${u.status==='active'?'Active':'Offline'}</span></td>
         <td style="font-size:12px;color:var(--text-faint)">${u.last}</td>
-        <td><div class="mini-btns"><button class="mini-btn" title="Edit" onclick="openUserModal('${u.id}')">${svg('edit')}</button><button class="mini-btn" title="Reset password" onclick="resetPwd('${u.id}')">${svg('key')}</button><button class="mini-btn" title="Delete" onclick="delUser('${u.id}')">${svg('trash')}</button></div></td></tr>`).join('')}
+        <td><div class="mini-btns"><button class="mini-btn" title="Edit" onclick="openUserModal('${u.id}')">${svg('edit')}</button><button class="mini-btn" title="Reset password" onclick="resetPwd('${u.id}')">${svg('key')}</button><button class="mini-btn" title="Delete" onclick="delUser('${u.id}')">${svg('trash')}</button></div></td></tr>`).join('')||`<tr><td colspan="${isSuper?7:6}" style="text-align:center;padding:24px;color:var(--text-faint)">No users in this business yet</td></tr>`}
       </tbody></table></div>`;}
   if(ADMIN_TAB==='requests'){
     b.innerHTML=`<div class="toolbar"><h3>Access requests <span class="tag">${DB.requests.length} pending</span></h3><button class="add-btn ghost" onclick="refreshAll()">${svg('refresh')}Refresh</button></div>
+      <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:14px">Department ke upar koi bhi (Manager/Admin/Super) approve kar sakta. Jo approve karega uska naam record me jayega.</p>
       ${DB.requests.length?DB.requests.map(r=>`<div class="req-card glass"><div class="avatar">${r.name[0]}</div>
-        <div class="info"><div class="n">${r.name}</div><div class="e">${r.email} · ${r.time}</div>${r.reason?`<div class="r">“${esc(r.reason)}”</div>`:''}</div>
+        <div class="info"><div class="n">${r.name}</div><div class="e">${r.email} · ${r.time}${isSuper&&r.business?' · '+esc(r.business):''}</div>${r.reason?`<div class="r">“${esc(r.reason)}”</div>`:''}</div>
         <div class="acts"><button class="add-btn" onclick="openApprove('${r.id}')">${svg('check')}Approve</button><button class="add-btn ghost" onclick="rejectReq('${r.id}')">${svg('x')}Reject</button></div></div>`).join(''):`<div class="empty">${svg('mail')}<h4>No pending requests</h4><p>New access requests show up here.</p></div>`}`;}
   if(ADMIN_TAB==='perms'){
-    b.innerHTML=`<div class="toolbar"><h3>Permission matrix</h3></div><p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">What each role can do across all departments. (Applies this session.)</p>
-      <div class="perm-grid"><div class="perm-row head"><div class="perm-cell">Role</div><div class="perm-cell">View</div><div class="perm-cell">Edit</div><div class="perm-cell">Upload</div><div class="perm-cell">Delete</div></div>
-      ${Object.keys(ROLES).map(role=>{const locked=role==='Super Admin'||(!isSuper&&role==='Admin');return `<div class="perm-row"><div class="perm-cell"><span class="role-chip ${ROLES[role].cls}">${dot()}${role}</span></div>
-      ${['view','edit','upload','delete'].map(c=>`<div class="perm-cell"><div class="toggle ${ROLES[role].can[c]?'on':''}" onclick="${locked?`toast('warn','Locked','Cannot modify this role.')`:`ROLES['${role}'].can['${c}']=ROLES['${role}'].can['${c}']?0:1;this.classList.toggle('on');toast('ok','Updated','${role} ${c} changed.')`}" ${locked?'style="opacity:.4;cursor:not-allowed"':''}></div></div>`).join('')}</div>`;}).join('')}</div>`;}
+    b.innerHTML=`<div class="toolbar"><h3>Role permissions</h3></div><p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Fixed rules across the system:</p>
+      <div class="perm-grid"><div class="perm-row head"><div class="perm-cell">Role</div><div class="perm-cell">Add</div><div class="perm-cell">Edit</div><div class="perm-cell">Delete</div><div class="perm-cell">Approve</div></div>
+      ${Object.keys(ROLES).map(role=>`<div class="perm-row"><div class="perm-cell"><span class="role-chip ${ROLES[role].cls}">${dot()}${role}</span></div>
+        <div class="perm-cell"><div class="toggle ${ROLES[role].add?'on':''}" style="opacity:.6;cursor:default"></div></div>
+        <div class="perm-cell"><div class="toggle ${ROLES[role].editAll?'on':''}" style="opacity:.6;cursor:default" title="${ROLES[role].editAll?'All':(ROLES[role].add?'Own only':'No')}"></div></div>
+        <div class="perm-cell"><div class="toggle ${ROLES[role].del?'on':''}" style="opacity:.6;cursor:default"></div></div>
+        <div class="perm-cell"><div class="toggle ${ROLES[role].canApprove?'on':''}" style="opacity:.6;cursor:default"></div></div></div>`).join('')}</div>
+      <p style="font-size:12px;color:var(--text-faint);margin-top:12px">Employee “Edit” = sirf apni banayi cheez. Delete sirf Manager/Admin/Super.</p>`;}
   if(ADMIN_TAB==='logs'){const logs=DB.logs||[];
     b.innerHTML=`<div class="toolbar"><h3>Audit logs <span class="tag">${logs.length} events</span></h3><button class="add-btn ghost" onclick="refreshAll()">${svg('refresh')}Refresh</button></div>
       <div class="table-wrap glass"><table><thead><tr><th>User</th><th>Action</th><th>Object</th><th>Department</th><th>Time</th></tr></thead><tbody>
       ${logs.map(l=>`<tr><td><div class="u-cell"><div class="avatar" style="width:30px;height:30px;font-size:12px">${(l.who||'?')[0]}</div><span class="nm">${l.who}</span></div></td><td style="text-transform:capitalize">${l.act}</td><td style="color:var(--text)">${l.obj}</td><td>${l.dept}</td><td style="font-size:12px;color:var(--text-faint)">${l.time}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-faint)">No logs yet</td></tr>'}
       </tbody></table></div>`;}
   if(ADMIN_TAB==='depts'){
-    b.innerHTML=`<div class="toolbar"><h3>Departments <span class="tag">${DEPARTMENTS.length}</span></h3><button class="add-btn" onclick="openDeptModal()">${svg('plus')}Add department</button></div>
+    b.innerHTML=`<div class="toolbar"><h3>Departments — ${esc(curBiz())} <span class="tag">${DEPARTMENTS.length}</span></h3><button class="add-btn" onclick="openDeptModal()">${svg('plus')}Add department</button></div>
       <div class="dept-quick">${DEPARTMENTS.map(d=>{const cnt=DB.users.filter(u=>u.dept===d.name).length;return`<div class="dqc glass" onclick="openDept('${d.name}')"><div class="ico" style="background:${grad(d.color)}">${svg(d.icon)}</div><div class="n">${d.name}</div><div class="c">${cnt} member${cnt!==1?'s':''}</div><div class="edit-fab"><button onclick="event.stopPropagation();openDeptModal('${d.id}')">${svg('edit')}</button><button onclick="event.stopPropagation();delDept('${d.id}')">${svg('trash')}</button></div></div>`;}).join('')}<div class="dqc add-dept glass" onclick="openDeptModal()">${svg('plus')}<div class="n">Add department</div></div></div>`;}
   if(ADMIN_TAB==='settings'){const ro=!isSuper;
     b.innerHTML=`<div class="toolbar"><h3>System settings</h3>${ro?`<span class="status-chip s-off"><span class="sd"></span>Read-only for Admin</span>`:''}</div><div class="set-grid">
@@ -912,26 +960,54 @@ function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=
 function setCard(ic,title,sub,items,ro){return `<div class="set-card glass"><h4>${svg(ic)}${title}</h4><p>${sub}</p>${items.map(([lbl,on])=>`<div class="set-item"><span>${lbl}</span><div class="toggle ${on?'on':''}" onclick="${ro?`toast('warn','Read-only','Only Super Admin can change settings.')`:`this.classList.toggle('on');toast('ok','Updated','${lbl} toggled.')`}" ${ro?'style="opacity:.5;cursor:not-allowed"':''}></div></div>`).join('')}</div>`;}
 function dot(){return `<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>`;}
 
+/* ---------- businesses CRUD (Super Admin) ---------- */
+let BIZ_PICK=0;
+function openBizModal(id){const x=id?BUSINESSES.find(b=>b.id===id):null;BIZ_PICK=x?Number(x.color):0;const m=document.getElementById('modal');
+  m.innerHTML=`<div class="modal-h"><h3>${x?'Edit business':'New business'}</h3><button class="x" onclick="closeModal()">${svg('x')}</button></div>
+    <p class="sub">${x?'Update this business.':'Create a business + assign its Admin (woh sirf isi business ko dekhega).'}</p>
+    <div class="pf-field"><label>Business name</label><input id="bz-name" value="${x?esc(x.name):''}" placeholder="e.g. SP Honda"></div>
+    <div class="pf-field"><label>Accent colour</label><div class="swatches" id="bz-colors">${GRADIENTS.map((g,i)=>`<div class="swatch ${i===BIZ_PICK?'sel':''}" style="background:${g}" onclick="pickBiz(${i})"></div>`).join('')}</div></div>
+    ${x?'':`<div style="border-top:1px solid var(--glass-border-soft);margin:18px 0 14px;padding-top:14px;font-size:13px;color:var(--text-dim)">Business Admin (optional)</div>
+    <div class="pf-field"><label>Admin name</label><input id="bz-aname" placeholder="Admin full name"></div>
+    <div class="profile-grid"><div class="pf-field"><label>Admin email</label><input id="bz-aemail" placeholder="admin@biz.com"></div>
+      <div class="pf-field"><label>Temp password</label><div class="pwd-row"><input id="bz-apwd" placeholder="auto-generate"><button class="add-btn ghost" type="button" onclick="document.getElementById('bz-apwd').value=Math.random().toString(36).slice(2,8)+'1'">${svg('key')}</button></div></div></div>`}
+    <button class="pbtn" onclick="saveBiz(event,'${id||''}')">${x?'Save changes':'Create business'}</button>`;
+  openModal();}
+function pickBiz(i){BIZ_PICK=i;document.querySelectorAll('#bz-colors .swatch').forEach((s,j)=>s.classList.toggle('sel',j===i));}
+function saveBiz(ev,id){const name=document.getElementById('bz-name').value.trim();if(!name){toast('warn','Missing name','Enter a business name.');return;}
+  const payload={name,color:BIZ_PICK};
+  if(!id){payload.adminName=(document.getElementById('bz-aname').value||'').trim();payload.adminEmail=(document.getElementById('bz-aemail').value||'').trim();payload.adminPwd=(document.getElementById('bz-apwd').value||'').trim();}
+  withBtn(ev&&ev.target,'Saving',async()=>{const r=await api(id?'updateBusiness':'addBusiness',{...payload,id});
+    if(r.ok){BUSINESSES=r.businesses||BUSINESSES;if(r.users)DB.users=r.users;buildBizSwitcher();closeModal();renderAdmin();toast('ok',id?'Business updated':'Business created',name);}else toast('warn','Error',r.error||'Failed.');});}
+function delBiz(id){const x=BUSINESSES.find(b=>b.id===id);
+  confirmModal('Delete business?',`Remove <b style="color:var(--text)">${esc(x.name)}</b> with ALL its departments, users & items? Logged in Deleted sheet. Cannot be undone.`,'Delete',async(btn)=>{
+    await withBtn(btn,'Deleting',async()=>{const r=await api('deleteBusiness',{id});if(r.ok)BUSINESSES=r.businesses||BUSINESSES;});
+    if(SESSION.business===x.name)SESSION.business=BUSINESSES[0]?BUSINESSES[0].name:'';
+    await bootstrapData();computeDepts();buildBizSwitcher();buildDeptNav();closeModal();renderAdmin();toast('warn','Business deleted',x.name);});}
+
 /* requests */
 function openApprove(id){const r=DB.requests.find(x=>x.id===id);const m=document.getElementById('modal');
+  const roleOpts=Object.keys(ROLES).filter(x=>SESSION.isSuper||x!=='Super Admin');
   m.innerHTML=`<div class="modal-h"><h3>Approve access</h3><button class="x" onclick="closeModal()">${svg('x')}</button></div>
-    <p class="sub">Give <b style="color:var(--text)">${esc(r.name)}</b> (${esc(r.email)}) an account. A temp password is emailed to them.</p>
-    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="ap-role">${Object.keys(ROLES).map(x=>`<option ${x==='Employee'?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div class="pf-field"><label>Department</label><select id="ap-dept">${DEPARTMENTS.map(d=>`<option>${d.name}</option>`).join('')}</select></div></div>
+    <p class="sub">Give <b style="color:var(--text)">${esc(r.name)}</b> (${esc(r.email)}) an account in <b>${esc(r.business||curBiz())}</b>. Temp password emailed.</p>
+    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="ap-role">${roleOpts.map(x=>`<option ${x==='Employee'?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="pf-field"><label>Department</label><select id="ap-dept"><option value="">— none —</option>${DEPARTMENTS.map(d=>`<option>${d.name}</option>`).join('')}</select></div></div>
     <button class="pbtn" onclick="approveReq(event,'${id}')">${svg('check')}Approve &amp; create user</button>`;
   openModal();}
 function approveReq(ev,id){withBtn(ev&&ev.target,'Approving',async()=>{const r=await api('approveRequest',{id,role:document.getElementById('ap-role').value,dept:document.getElementById('ap-dept').value});
-  if(r.ok){DB.users=r.users||DB.users;DB.requests=r.requests||DB.requests;updateReqBadge();closeModal();renderAdmin();toast('ok','Approved',(r.tempPwd?'Temp password emailed: '+r.tempPwd:'User created & emailed.'));}else toast('warn','Error',r.error||'Failed.');});}
+  if(r.ok){DB.users=r.users||DB.users;DB.requests=r.requests||DB.requests;updateReqBadge();closeModal();renderAdmin();toast('ok','Approved by '+(r.approvedBy||'you'),(r.tempPwd?'Temp password: '+r.tempPwd:'User created & emailed.'));}else toast('warn','Error',r.error||'Failed.');});}
 function rejectReq(id){confirmModal('Reject request?','This dismisses the access request.','Reject',async(btn)=>{await withBtn(btn,'Rejecting',async()=>{const r=await api('rejectRequest',{id});if(r.ok){DB.requests=r.requests||DB.requests;updateReqBadge();}});closeModal();renderAdmin();toast('warn','Rejected','Request dismissed.');});}
 
 /* user CRUD */
 function openUserModal(id){const u=id?DB.users.find(x=>x.id===id):null;const m=document.getElementById('modal');
+  const roleOpts=Object.keys(ROLES).filter(x=>SESSION.isSuper||x!=='Super Admin');
   m.innerHTML=`<div class="modal-h"><h3>${u?'Edit user':'Add new user'}</h3><button class="x" onclick="closeModal()">${svg('x')}</button></div>
-    <p class="sub">${u?'Update role, department and access.':'Create a user & assign department + role.'}</p>
+    <p class="sub">${u?'Update role, department and access.':'Create a user in '+esc(curBiz())+' & assign department + role.'}</p>
     <div class="pf-field"><label>Full name</label><input id="m-name" value="${u?esc(u.name):''}" placeholder="e.g. Somnath Karmakar"></div>
     <div class="pf-field"><label>Email</label><input id="m-email" value="${u?esc(u.email):''}" placeholder="name@company.com"></div>
-    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="m-role">${Object.keys(ROLES).map(r=>`<option ${u&&u.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
-      <div class="pf-field"><label>Department</label><select id="m-dept">${DEPARTMENTS.map(d=>`<option ${u&&u.dept===d.name?'selected':''}>${d.name}</option>`).join('')}</select></div></div>
+    ${SESSION.isSuper?`<div class="pf-field"><label>Business</label><select id="m-biz">${BUSINESSES.map(bz=>`<option ${ (u?u.business:curBiz())===bz.name?'selected':''}>${esc(bz.name)}</option>`).join('')}</select></div>`:''}
+    <div class="profile-grid"><div class="pf-field"><label>Role</label><select id="m-role">${roleOpts.map(r=>`<option ${u&&u.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="pf-field"><label>Department</label><select id="m-dept"><option value="">— none —</option>${DEPARTMENTS.map(d=>`<option ${u&&u.dept===d.name?'selected':''}>${d.name}</option>`).join('')}</select></div></div>
     <div class="profile-grid"><div class="pf-field"><label>Status</label><select id="m-status"><option value="active" ${!u||u.status==='active'?'selected':''}>Active</option><option value="off" ${u&&u.status==='off'?'selected':''}>Offline</option></select></div>
       <div class="pf-field"><label>Password ${u?'(blank=keep)':''}</label><div class="pwd-row"><input id="m-pwd" placeholder="${u?'••••••':'auto-generate'}"><button class="add-btn ghost" type="button" onclick="document.getElementById('m-pwd').value=Math.random().toString(36).slice(2,8)+'1'">${svg('key')}</button></div></div></div>
     <button class="pbtn" onclick="saveUser(event,'${id||''}')">${u?'Save changes':'Create user'}</button>`;
@@ -939,6 +1015,7 @@ function openUserModal(id){const u=id?DB.users.find(x=>x.id===id):null;const m=d
 function saveUser(ev,id){const name=document.getElementById('m-name').value.trim(),email=document.getElementById('m-email').value.trim();
   if(!name||!email){toast('warn','Missing info','Name and email required.');return;}
   const payload={name,email,role:document.getElementById('m-role').value,dept:document.getElementById('m-dept').value,status:document.getElementById('m-status').value,pwd:document.getElementById('m-pwd').value};
+  const bsel=document.getElementById('m-biz');if(bsel)payload.business=bsel.value;
   withBtn(ev&&ev.target,'Saving',async()=>{
     if(live()){const r=await api(id?'updateUser':'addUser',{...payload,id});if(r.ok)DB.users=r.users||DB.users;else{toast('warn','Error',r.error||'Failed.');return;}}
     else{if(id){const u=DB.users.find(x=>x.id===id);Object.assign(u,{name,email,role:payload.role,dept:payload.dept,status:payload.status});}else DB.users.push({id:'u'+Date.now(),name,email,role:payload.role,dept:payload.dept,status:payload.status,last:'never'});}
