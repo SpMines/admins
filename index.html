@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sp_Admins_Sheet</title>
+<title>Systems Master Portal</title>
 <meta name="author" content="Somnath Karmakar">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -703,7 +703,10 @@ function sendReset(ev){const email=document.getElementById('forgot-email').value
     toast('ok','Request sent','Ask your admin to reset it — they have been notified.');showAuth('login');});}
 
 /* ================= ENTER / EXIT ================= */
-async function enterApp(user){SESSION.user=user;SESSION.business=user.business||'';saveSession();
+async function enterApp(user){SESSION.user=user;SESSION.business=user.business||'';
+  // Immediately set isSuper from role — bootstrap will confirm/override
+  SESSION.isSuper=(user.role==='Super Admin');
+  saveSession();
   document.getElementById('auth').style.display='none';document.getElementById('app').classList.add('show');
   document.getElementById('sb-avatar').textContent=user.name[0];document.getElementById('sb-name').textContent=user.name;document.getElementById('sb-role').textContent=user.role;
   document.getElementById('v-dashboard').innerHTML='<div class="spinner"></div>';
@@ -717,10 +720,16 @@ async function enterApp(user){SESSION.user=user;SESSION.business=user.business||
   toast('ok','Welcome, '+user.name.split(' ')[0]+'!',(SESSION.isSuper?'Super Admin · all businesses':user.role+' · '+(SESSION.business||'—')));}
 async function bootstrapData(){
   if(live()){const r=await api('bootstrap',{email:SESSION.user.email,role:SESSION.user.role});
-    if(r.ok){BUSINESSES=r.businesses||[];SESSION.isSuper=!!r.isSuper;
+    if(r.ok){BUSINESSES=r.businesses||[];
+      // isSuper: trust backend OR fallback to role check
+      SESSION.isSuper=!!r.isSuper||(SESSION.user.role==='Super Admin');
       SESSION.business=r.viewBusiness||SESSION.user.business||(BUSINESSES[0]?BUSINESSES[0].name:'');
-      DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}}
-  else{BUSINESSES=[{id:'b0',name:'Default Business',color:0}];SESSION.isSuper=true;SESSION.business='Default Business';
+      DEPARTMENTS=r.departments||[];DB.users=r.users||[];DB.logs=r.logs||[];DB.requests=r.requests||[];}
+    else{// backend failed — still set isSuper from role
+      SESSION.isSuper=(SESSION.user.role==='Super Admin');}}
+  else{BUSINESSES=[{id:'b0',name:'Default Business',color:0}];
+    SESSION.isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
+    SESSION.business='Default Business';
     DEPARTMENTS=clone(SEED_DEPTS);DB.users=[{id:'u0',name:'Administrator',email:'admin@systemsmaster.com',role:'Super Admin',business:'Default Business',dept:'Directors',status:'active',last:'now'}];DB.logs=[];DB.requests=[];}
   ITEMS={};}
 function computeDepts(){const names=DEPARTMENTS.map(d=>d.name);
@@ -743,7 +752,8 @@ function updateReqBadge(){const n=(DB.requests||[]).length,b=document.getElement
 
 /* ---------- business switcher (Super Admin) ---------- */
 function buildBizSwitcher(){let host=document.getElementById('biz-switch');
-  if(!SESSION.isSuper||BUSINESSES.length<1){if(host)host.remove();return;}
+  const _isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
+  if(!_isSuper||BUSINESSES.length<1){if(host)host.remove();return;}
   if(!host){host=document.createElement('div');host.id='biz-switch';host.className='biz-switch';
     const brand=document.querySelector('.sb-brand');brand.parentNode.insertBefore(host,brand.nextSibling);}
   host.innerHTML=`<label>Viewing business</label><select onchange="switchBiz(this.value)">${BUSINESSES.map(b=>`<option ${b.name===SESSION.business?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`;}
@@ -903,11 +913,12 @@ function delDept(id){const d=DEPARTMENTS.find(x=>x.id===id);
 /* ================= ADMIN PANEL ================= */
 let ADMIN_TAB='requests';
 function renderAdmin(){const role=R();if(!(role.admin||role.canApprove||role.canUsers)){go('dashboard');return;}
+  const _isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin');
   let tabs=[];
   if(role.canApprove)tabs.push(['requests','Requests','mail']);
   if(role.canUsers)tabs.push(['users','Users','users']);
   if(role.canManageDepts)tabs.push(['depts','Departments','building']);
-  if(role.isSuper)tabs.push(['biz','Businesses','shield']);
+  if(_isSuper)tabs.push(['biz','Businesses','shield']);
   if(role.admin)tabs.push(['perms','Permissions','star']);
   if(role.admin)tabs.push(['logs','Audit Logs','activity']);
   if(role.admin)tabs.push(['settings','Settings','settings']);
@@ -915,7 +926,7 @@ function renderAdmin(){const role=R();if(!(role.admin||role.canApprove||role.can
   document.getElementById('v-admin').innerHTML=`<div class="admin-tabs">${tabs.map(([k,l,ic])=>`<button class="atab ${k===ADMIN_TAB?'active':''}" onclick="adminTab('${k}')">${svg(ic)}${l}${k==='requests'&&DB.requests.length?`<span class="nb">${DB.requests.length}</span>`:''}</button>`).join('')}</div><div id="admin-body"></div>`;
   renderAdminTab();}
 function adminTab(k){ADMIN_TAB=k;renderAdmin();}
-function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.isSuper,role=R();
+function renderAdminTab(){const b=document.getElementById('admin-body'),isSuper=SESSION.isSuper||(SESSION.user&&SESSION.user.role==='Super Admin'),role=R();
   if(ADMIN_TAB==='biz'){
     b.innerHTML=`<div class="toolbar"><h3>Businesses <span class="tag">${BUSINESSES.length}</span></h3><button class="add-btn" onclick="openBizModal()">${svg('plus')}New business</button></div>
       <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Har business apne Admin ke under hota hai — ek admin sirf apna business dekhega. Naya business banao + uska admin set karo.</p>
@@ -1053,7 +1064,9 @@ function bigAvatarHTML(){const img=getAvatar();const base='width:96px;height:96p
   return img?`<div style="${base};background:none;overflow:hidden"><img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
             :`<div style="${base};background:${grad(getAvColor())}">${(SESSION.user.name[0]||'?')}</div>`;}
 
-function renderProfile(){const u=SESSION.user,role=R(),hasImg=!!getAvatar();
+function renderProfile(){
+  if(!SESSION.user){go('dashboard');return;}
+  const u=SESSION.user,role=R(),hasImg=!!getAvatar();
   const perms=[];
   if(role.add)perms.push(role.editAll?'Add &amp; edit all items':'Add items, edit own');else perms.push('View only');
   if(role.del)perms.push('Delete');
@@ -1061,47 +1074,167 @@ function renderProfile(){const u=SESSION.user,role=R(),hasImg=!!getAvatar();
   if(role.canUsers)perms.push('Manage users');
   if(role.canManageDepts)perms.push('Manage departments');
   if(role.isSuper)perms.push('All businesses');
+  const myLogs=(DB.logs||[]).filter(l=>l.who===u.name).slice(0,5);
   document.getElementById('v-profile').innerHTML=`
-    <section class="profile-head glass" style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
-      <div style="position:relative">${bigAvatarHTML()}
-        <button onclick="pickAvatarPhoto()" title="Change photo" style="position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;border:3px solid var(--bg);background:linear-gradient(135deg,#4d7cff,#a855f7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer">${svg('edit')}</button></div>
-      <div style="flex:1;min-width:200px"><h1 style="margin:0 0 8px">${esc(u.name)}</h1>
-        <div class="meta" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span class="role-chip ${role.cls}">${dot()}${u.role}</span>
-          <span class="status-chip s-active"><span class="sd"></span>Active</span>
-          <span class="tag">${svg('shield')} ${esc(curBiz()||'—')}</span></div>
-        <p style="margin:10px 0 0;color:var(--text-dim);font-size:13px">${esc(u.email)}</p></div></section>
+  <style>
+  .pf-hero{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:22px;background:linear-gradient(135deg,rgba(77,124,255,.18) 0%,rgba(168,85,247,.18) 100%);border:1px solid var(--glass-border-soft);backdrop-filter:blur(26px)}
+  .pf-hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(77,124,255,.08),rgba(168,85,247,.06),rgba(38,214,245,.04));z-index:0}
+  .pf-hero-content{position:relative;z-index:1;padding:32px 30px;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .pf-av-wrap{position:relative;flex-shrink:0}
+  .pf-big-av{width:100px;height:100px;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:700;color:#fff;box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.12);overflow:hidden;flex-shrink:0}
+  .pf-cam-btn{position:absolute;bottom:-4px;right:-4px;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4d7cff,#a855f7);border:3px solid var(--bg-0);display:grid;place-items:center;cursor:pointer;transition:.2s;box-shadow:0 4px 12px rgba(77,124,255,.4)}
+  .pf-cam-btn:hover{transform:scale(1.12)}
+  .pf-cam-btn svg{width:14px;height:14px;color:#fff}
+  .pf-hero-info{flex:1;min-width:200px}
+  .pf-hero-name{font-size:26px;font-weight:700;margin-bottom:10px;letter-spacing:.2px}
+  .pf-hero-chips{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .pf-hero-email{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:7px}
+  .pf-hero-email svg{width:14px;height:14px;color:var(--text-faint)}
+  .pf-hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .pf-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0;background:rgba(255,255,255,.04);border-top:1px solid var(--glass-border-soft)}
+  .pf-stat-cell{padding:16px 22px;border-right:1px solid var(--glass-border-soft);display:flex;flex-direction:column;gap:2px}
+  .pf-stat-cell:last-child{border-right:none}
+  .pf-stat-num{font-size:21px;font-weight:700;color:var(--text)}
+  .pf-stat-lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint)}
+  .pf-tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--glass);border:1px solid var(--glass-border-soft);padding:5px;border-radius:14px;width:fit-content;backdrop-filter:blur(20px)}
+  .pf-tab{padding:8px 20px;border-radius:10px;font-size:13px;font-weight:500;color:var(--text-dim);transition:.2s;cursor:pointer;white-space:nowrap}
+  .pf-tab.active{background:var(--grad-bp);color:#fff;box-shadow:0 4px 14px -6px rgba(124,58,237,.7)}
+  .pf-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.05)}
+  .pf-body-wrap{display:none}.pf-body-wrap.active{display:block}
+  .pf-photo-zone{border:2px dashed var(--glass-border);border-radius:18px;padding:36px;text-align:center;transition:.3s;cursor:pointer;margin-bottom:18px;background:rgba(255,255,255,.02)}
+  .pf-photo-zone:hover{border-color:var(--neon-purple);background:rgba(168,85,247,.04)}
+  .pf-photo-zone svg{width:38px;height:38px;color:var(--neon-purple);margin-bottom:12px;opacity:.8}
+  .pf-av-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .pf-av-opt{width:48px;height:48px;border-radius:14px;cursor:pointer;border:2px solid transparent;transition:.2s;display:grid;place-items:center;font-size:18px;font-weight:700;color:#fff}
+  .pf-av-opt.sel{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.2)}
+  .pf-perm-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--glass-border-soft)}
+  .pf-perm-item:last-child{border-bottom:none}
+  .pf-perm-dot{width:8px;height:8px;border-radius:50%;background:var(--neon-cyan);flex-shrink:0}
+  .pf-perm-text{font-size:13px;color:var(--text-dim)}
+  </style>
 
-    <div class="profile-grid" style="margin-top:18px">
-      <div class="panel glass"><div class="panel-h"><h3>Profile photo</h3></div>
-        <div style="display:flex;gap:16px;align-items:center;margin:6px 0 16px">${bigAvatarHTML()}
-          <div style="font-size:13px;color:var(--text-dim);line-height:1.6">Square photo best lagti hai.<br>Apne device se choose karo — sirf is browser me save hoti hai.</div></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="add-btn" onclick="pickAvatarPhoto()">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
-          ${hasImg?`<button class="add-btn ghost" onclick="removeAvatar()">${svg('trash')}Remove</button>`:''}</div>
-        ${hasImg?'':`<div style="margin-top:16px"><label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)">Avatar colour</label>
-          <div class="swatches" style="margin-top:8px">${GRADIENTS.map((g,i)=>`<div class="swatch ${i===getAvColor()?'sel':''}" style="background:${g}" onclick="setAvColor(${i})"></div>`).join('')}</div></div>`}
+  <!-- HERO CARD -->
+  <div class="pf-hero">
+    <div class="pf-hero-bg"></div>
+    <div class="pf-hero-content">
+      <div class="pf-av-wrap">
+        <div class="pf-big-av" id="pf-big-av-el" style="background:${hasImg?'none':grad(getAvColor())}">${hasImg?`<img src="${getAvatar()}" style="width:100%;height:100%;object-fit:cover">`:esc(u.name[0]||'?')}</div>
+        <button class="pf-cam-btn" onclick="pickAvatarPhoto()" title="Change photo">${svg('edit')}</button>
       </div>
-
-      <div class="panel glass"><div class="panel-h"><h3>Account details</h3></div>
-        <div class="pf-field"><label>Full name</label><input id="p-name" value="${esc(u.name)}"></div>
-        <div class="pf-field"><label>Email</label><input value="${esc(u.email)}" disabled></div>
-        <div class="profile-grid"><div class="pf-field"><label>Role</label><input value="${esc(u.role)}" disabled></div><div class="pf-field"><label>Department</label><input value="${esc(u.dept||'—')}" disabled></div></div>
-        <button class="pbtn" onclick="saveProfile(event)">Save changes</button></div>
+      <div class="pf-hero-info">
+        <div class="pf-hero-name">${esc(u.name)}</div>
+        <div class="pf-hero-chips">
+          <span class="role-chip ${role.cls}">${dot()}${u.role}</span>
+          <span class="status-chip s-active"><span class="sd"></span>Active</span>
+          <span class="tag" style="display:inline-flex;align-items:center;gap:5px">${svg('shield','',14)}${esc(curBiz()||'—')}</span>
+        </div>
+        <div class="pf-hero-email">${svg('mail')}${esc(u.email)}</div>
+        <div class="pf-hero-actions">
+          <button class="add-btn" onclick="pfTab('photo')">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
+          <button class="add-btn ghost" onclick="pfTab('security')">${svg('key')}Change password</button>
+        </div>
+      </div>
     </div>
-
-    <div class="profile-grid" style="margin-top:18px">
-      <div class="panel glass"><div class="panel-h"><h3>Access &amp; permissions</h3></div>
-        <div class="set-item" style="border:none"><span>Business</span><b style="font-size:13px">${esc(curBiz()||'—')}</b></div>
-        <div class="set-item"><span>Departments</span><b style="font-size:13px">${u.depts.length}</b></div>
-        <div class="set-item"><span>Signed in</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin}</span></div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">${perms.map(p=>`<span class="tag">${p}</span>`).join('')}</div></div>
-      <div class="panel glass"><div class="panel-h"><h3>Password &amp; security</h3></div>
-        <div class="set-item" style="border:none"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA','Login pe OTP on hai.')"></div></div>
-        <div class="set-item"><span>Password</span><span style="font-size:12px;color:var(--text-faint)">••••••</span></div>
-        <button class="pbtn" style="margin-top:18px" onclick="openChangePwd()">${svg('key')} Change password</button></div>
+    <div class="pf-stat-row">
+      <div class="pf-stat-cell"><div class="pf-stat-num">${u.depts?u.depts.length:0}</div><div class="pf-stat-lbl">Departments</div></div>
+      <div class="pf-stat-cell"><div class="pf-stat-num">${perms.length}</div><div class="pf-stat-lbl">Permissions</div></div>
+      <div class="pf-stat-cell"><div class="pf-stat-num">${myLogs.length}</div><div class="pf-stat-lbl">Recent actions</div></div>
+      <div class="pf-stat-cell"><div class="pf-stat-num" style="font-size:13px;padding-top:4px">${esc(SESSION.isSuper?'All':'One')}</div><div class="pf-stat-lbl">Business scope</div></div>
     </div>
+  </div>
 
-    <div class="panel glass" style="margin-top:18px"><div class="panel-h"><h3>My recent activity</h3></div>
-      <div class="activity">${(DB.logs||[]).filter(l=>l.who===u.name).slice(0,5).map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt">You ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join('')||'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4></div>'}</div></div>`;}
+  <!-- TABS -->
+  <div class="pf-tabs">
+    <div class="pf-tab active" id="pftab-account" onclick="pfTab('account')">Account</div>
+    <div class="pf-tab" id="pftab-photo" onclick="pfTab('photo')">Photo &amp; Avatar</div>
+    <div class="pf-tab" id="pftab-security" onclick="pfTab('security')">Security</div>
+    <div class="pf-tab" id="pftab-activity" onclick="pfTab('activity')">Activity</div>
+  </div>
+
+  <!-- TAB: ACCOUNT -->
+  <div class="pf-body-wrap active" id="pfbody-account">
+    <div class="profile-grid">
+      <div class="panel glass">
+        <div class="panel-h"><h3>Account details</h3></div>
+        <div class="pf-field"><label>Full name</label><input id="p-name" value="${esc(u.name)}" placeholder="Your full name"></div>
+        <div class="pf-field"><label>Email address</label><input value="${esc(u.email)}" disabled></div>
+        <div class="profile-grid">
+          <div class="pf-field"><label>Role</label><input value="${esc(u.role)}" disabled></div>
+          <div class="pf-field"><label>Department</label><input value="${esc(u.dept||'—')}" disabled></div>
+        </div>
+        <button class="pbtn" onclick="saveProfile(event)">${svg('check')} Save changes</button>
+      </div>
+      <div class="panel glass">
+        <div class="panel-h"><h3>Access &amp; permissions</h3></div>
+        <div class="set-item" style="border:none"><span>Business</span><b style="font-size:13px;color:var(--text)">${esc(curBiz()||'—')}</b></div>
+        <div class="set-item"><span>Departments access</span><b style="color:var(--text)">${u.depts?u.depts.length:0}</b></div>
+        <div class="set-item"><span>Last login</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin||'—'}</span></div>
+        <div style="margin-top:16px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin-bottom:10px">What you can do</div>
+        <div>${perms.map(p=>`<div class="pf-perm-item"><div class="pf-perm-dot"></div><div class="pf-perm-text">${p}</div></div>`).join('')}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: PHOTO -->
+  <div class="pf-body-wrap" id="pfbody-photo">
+    <div class="profile-grid">
+      <div class="panel glass">
+        <div class="panel-h"><h3>Profile photo</h3></div>
+        <div style="display:flex;gap:18px;align-items:center;margin-bottom:20px">
+          <div class="pf-big-av" style="width:80px;height:80px;font-size:32px;border-radius:20px;background:${hasImg?'none':grad(getAvColor())}">${hasImg?`<img src="${getAvatar()}" style="width:100%;height:100%;object-fit:cover">`:esc(u.name[0]||'?')}</div>
+          <div style="font-size:13px;color:var(--text-dim);line-height:1.65"><b style="color:var(--text)">Square photo best dikhti hai</b><br>Device se choose karo — browser me locally save hoti hai.<br><span style="font-size:11.5px;color:var(--text-faint)">Max recommended: 2 MB · JPEG/PNG/WEBP</span></div>
+        </div>
+        <div onclick="pickAvatarPhoto()" class="pf-photo-zone">${svg('upload')}<h4 style="font-size:15px;font-weight:600;margin-bottom:5px">${hasImg?'Change your photo':'Upload a photo'}</h4><p style="font-size:12.5px;color:var(--text-faint)">Click to browse — or drag & drop</p></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="add-btn" onclick="pickAvatarPhoto()">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
+          ${hasImg?`<button class="add-btn ghost" onclick="removeAvatar()">${svg('trash')}Remove photo</button>`:''}
+        </div>
+      </div>
+      <div class="panel glass">
+        <div class="panel-h"><h3>Avatar colour</h3></div>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Photo nahi hai to initials avatar dikhta hai. Is ka colour choose karo:</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+          ${GRADIENTS.map((g,i)=>`<div class="pf-av-opt ${i===getAvColor()?'sel':''}" style="background:${g}" onclick="setAvColor(${i})">${u.name[0]||'?'}</div>`).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--text-faint);text-align:center">Click any colour to preview &amp; save</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: SECURITY -->
+  <div class="pf-body-wrap" id="pfbody-security">
+    <div class="profile-grid">
+      <div class="panel glass">
+        <div class="panel-h"><h3>Change password</h3></div>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:18px">New password must be at least 6 characters.</p>
+        <div class="pf-field"><label>Current password</label><input type="password" id="cp-old-inline" placeholder="••••••"></div>
+        <div class="pf-field"><label>New password</label><input type="password" id="cp-new-inline" placeholder="6+ characters"></div>
+        <div class="pf-field"><label>Confirm new password</label><input type="password" id="cp-conf-inline" placeholder="Repeat new password"></div>
+        <button class="pbtn" onclick="saveChangePwdInline(event)">${svg('key')} Update password</button>
+      </div>
+      <div class="panel glass">
+        <div class="panel-h"><h3>Login &amp; security</h3></div>
+        <div class="set-item" style="border:none"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA enabled','Login pe OTP on hai — yeh nahi badla ja sakta.')"></div></div>
+        <div class="set-item"><span>Current session</span><span style="font-size:12px;color:var(--ok)">Active</span></div>
+        <div class="set-item"><span>Session keep-alive</span><span style="font-size:12px;color:var(--text-faint)">${CONFIG.SESSION_HOURS}h</span></div>
+        <div class="set-item"><span>Last login</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin||'—'}</span></div>
+        <button class="add-btn ghost" style="margin-top:18px;width:100%;justify-content:center" onclick="logout()">${svg('logout')} Sign out of this device</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ACTIVITY -->
+  <div class="pf-body-wrap" id="pfbody-activity">
+    <div class="panel glass">
+      <div class="panel-h"><h3>My recent activity</h3><a class="link" style="font-size:12px" onclick="go('admin');setTimeout(()=>adminTab('logs'),80)">View all logs</a></div>
+      <div class="activity">${myLogs.length?myLogs.map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt">You ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join(''):'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4><p>Your actions will appear here.</p></div>'}</div>
+    </div>
+  </div>`;}
+function pfTab(t){['account','photo','security','activity'].forEach(k=>{const tb=document.getElementById('pftab-'+k),bd=document.getElementById('pfbody-'+k);if(tb)tb.classList.toggle('active',k===t);if(bd)bd.classList.toggle('active',k===t);});}
+function saveChangePwdInline(ev){const o=document.getElementById('cp-old-inline').value,n=document.getElementById('cp-new-inline').value,c=document.getElementById('cp-conf-inline').value;
+  if(!o||!n){toast('warn','Missing','Fill all fields.');return;}if(n.length<6){toast('warn','Too short','New password 6+ chars.');return;}if(n!==c){toast('warn','Mismatch','New passwords do not match.');return;}
+  withBtn(ev&&ev.target,'Updating',async()=>{const r=await api('changePassword',{email:SESSION.user.email,oldPwd:o,newPwd:n});
+    if(r.ok){document.getElementById('cp-old-inline').value='';document.getElementById('cp-new-inline').value='';document.getElementById('cp-conf-inline').value='';toast('ok','Password changed','Use the new password next time.');}else toast('warn','Failed',r.error||'Could not change.');});}
 function saveProfile(ev){const name=document.getElementById('p-name').value.trim();if(!name)return;
   withBtn(ev&&ev.target,'Saving',async()=>{if(live()){await api('updateUser',{id:findMyId(),name,email:SESSION.user.email,role:SESSION.user.role,dept:SESSION.user.dept,status:'active'});}
     SESSION.user.name=name;saveSession();document.getElementById('sb-name').textContent=name;document.getElementById('sb-avatar').textContent=name[0];toast('ok','Profile saved','Your details were updated.');});}
