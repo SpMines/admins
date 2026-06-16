@@ -1029,23 +1029,77 @@ function resetPwd(id){const u=DB.users.find(x=>x.id===id);
     await withBtn(btn,'Resetting',async()=>{const r=await api('resetPassword',{id});if(r.ok){toast('ok','Password reset',r.newPwd?('Emailed. Temp: '+r.newPwd):'Emailed to user.');}else toast('warn','Error',r.error||'Failed.');});closeModal();});}
 
 /* ================= PROFILE ================= */
-function renderProfile(){const u=SESSION.user,role=ROLES[u.role]||ROLES['Viewer'];
+/* ---------- avatar (photo or initials) — stored locally per user ---------- */
+function avKey(){return 'smp_av_'+((SESSION.user&&SESSION.user.email)||'').toLowerCase();}
+function avColorKey(){return 'smp_avc_'+((SESSION.user&&SESSION.user.email)||'').toLowerCase();}
+function getAvatar(){try{return localStorage.getItem(avKey())||'';}catch(e){return '';}}
+function getAvColor(){try{return Number(localStorage.getItem(avColorKey())||0);}catch(e){return 0;}}
+function setAvColor(i){try{localStorage.setItem(avColorKey(),i);}catch(e){}applyAvatar();renderProfile();}
+function applyAvatar(){const img=getAvatar(),el=document.getElementById('sb-avatar');if(!el)return;
+  if(img){el.innerHTML=`<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`;el.style.background='none';}
+  else{el.innerHTML='';el.textContent=((SESSION.user&&SESSION.user.name[0])||'?');el.style.background=grad(getAvColor());}}
+function pickAvatarPhoto(){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{const im=new Image();im.onload=()=>{const S=256,c=document.createElement('canvas');c.width=S;c.height=S;
+      const side=Math.min(im.width,im.height),ctx=c.getContext('2d');
+      ctx.drawImage(im,(im.width-side)/2,(im.height-side)/2,side,side,0,0,S,S);
+      let data;try{data=c.toDataURL('image/jpeg',0.85);localStorage.setItem(avKey(),data);}catch(err){toast('warn','Too big','Photo bahut bada hai, chhota use karo.');return;}
+      applyAvatar();renderProfile();toast('ok','Photo set','Profile photo update ho gayi.');};
+      im.onerror=()=>toast('warn','Bad image','Image read nahi hui.');im.src=r.result;};
+    r.readAsDataURL(f);};
+  inp.click();}
+function removeAvatar(){try{localStorage.removeItem(avKey());}catch(e){}applyAvatar();renderProfile();toast('info','Photo removed','Ab initials avatar dikhega.');}
+function bigAvatarHTML(){const img=getAvatar();const base='width:96px;height:96px;border-radius:26px;font-size:36px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 12px 34px rgba(77,124,255,.35);flex-shrink:0';
+  return img?`<div style="${base};background:none;overflow:hidden"><img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
+            :`<div style="${base};background:${grad(getAvColor())}">${(SESSION.user.name[0]||'?')}</div>`;}
+
+function renderProfile(){const u=SESSION.user,role=R(),hasImg=!!getAvatar();
+  const perms=[];
+  if(role.add)perms.push(role.editAll?'Add &amp; edit all items':'Add items, edit own');else perms.push('View only');
+  if(role.del)perms.push('Delete');
+  if(role.canApprove)perms.push('Approve requests');
+  if(role.canUsers)perms.push('Manage users');
+  if(role.canManageDepts)perms.push('Manage departments');
+  if(role.isSuper)perms.push('All businesses');
   document.getElementById('v-profile').innerHTML=`
-    <section class="profile-head glass"><div class="avatar">${u.name[0]}</div><div><h1>${u.name}</h1>
-      <div class="meta"><span class="role-chip ${role.cls}">${dot()}${u.role}</span><span class="status-chip s-active"><span class="sd"></span>Active</span>${u.google?'<span class="tag">Google account</span>':''}</div></div></section>
-    <div class="profile-grid">
+    <section class="profile-head glass" style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+      <div style="position:relative">${bigAvatarHTML()}
+        <button onclick="pickAvatarPhoto()" title="Change photo" style="position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;border:3px solid var(--bg);background:linear-gradient(135deg,#4d7cff,#a855f7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer">${svg('edit')}</button></div>
+      <div style="flex:1;min-width:200px"><h1 style="margin:0 0 8px">${esc(u.name)}</h1>
+        <div class="meta" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span class="role-chip ${role.cls}">${dot()}${u.role}</span>
+          <span class="status-chip s-active"><span class="sd"></span>Active</span>
+          <span class="tag">${svg('shield')} ${esc(curBiz()||'—')}</span></div>
+        <p style="margin:10px 0 0;color:var(--text-dim);font-size:13px">${esc(u.email)}</p></div></section>
+
+    <div class="profile-grid" style="margin-top:18px">
+      <div class="panel glass"><div class="panel-h"><h3>Profile photo</h3></div>
+        <div style="display:flex;gap:16px;align-items:center;margin:6px 0 16px">${bigAvatarHTML()}
+          <div style="font-size:13px;color:var(--text-dim);line-height:1.6">Square photo best lagti hai.<br>Apne device se choose karo — sirf is browser me save hoti hai.</div></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="add-btn" onclick="pickAvatarPhoto()">${svg('upload')}${hasImg?'Change photo':'Upload photo'}</button>
+          ${hasImg?`<button class="add-btn ghost" onclick="removeAvatar()">${svg('trash')}Remove</button>`:''}</div>
+        ${hasImg?'':`<div style="margin-top:16px"><label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)">Avatar colour</label>
+          <div class="swatches" style="margin-top:8px">${GRADIENTS.map((g,i)=>`<div class="swatch ${i===getAvColor()?'sel':''}" style="background:${g}" onclick="setAvColor(${i})"></div>`).join('')}</div></div>`}
+      </div>
+
       <div class="panel glass"><div class="panel-h"><h3>Account details</h3></div>
         <div class="pf-field"><label>Full name</label><input id="p-name" value="${esc(u.name)}"></div>
         <div class="pf-field"><label>Email</label><input value="${esc(u.email)}" disabled></div>
-        <div class="profile-grid"><div class="pf-field"><label>Role</label><input value="${u.role}" disabled></div><div class="pf-field"><label>Department</label><input value="${u.dept||'—'}" disabled></div></div>
+        <div class="profile-grid"><div class="pf-field"><label>Role</label><input value="${esc(u.role)}" disabled></div><div class="pf-field"><label>Department</label><input value="${esc(u.dept||'—')}" disabled></div></div>
         <button class="pbtn" onclick="saveProfile(event)">Save changes</button></div>
-      <div class="panel glass"><div class="panel-h"><h3>Password &amp; security</h3></div>
-        <div class="set-item" style="border:none"><span>Department access</span><b style="font-size:13px">${u.depts.length} dept${u.depts.length!==1?'s':''}</b></div>
-        <div class="set-item"><span>Permissions</span><span style="font-size:12px;color:var(--text-faint)">${Object.entries(role.can).filter(([k,v])=>v).map(([k])=>k).join(' · ')}</span></div>
+    </div>
+
+    <div class="profile-grid" style="margin-top:18px">
+      <div class="panel glass"><div class="panel-h"><h3>Access &amp; permissions</h3></div>
+        <div class="set-item" style="border:none"><span>Business</span><b style="font-size:13px">${esc(curBiz()||'—')}</b></div>
+        <div class="set-item"><span>Departments</span><b style="font-size:13px">${u.depts.length}</b></div>
         <div class="set-item"><span>Signed in</span><span style="font-size:12px;color:var(--text-faint)">${u.lastLogin}</span></div>
-        <div class="set-item"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA','Two-factor stays on.')"></div></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">${perms.map(p=>`<span class="tag">${p}</span>`).join('')}</div></div>
+      <div class="panel glass"><div class="panel-h"><h3>Password &amp; security</h3></div>
+        <div class="set-item" style="border:none"><span>Two-factor (OTP)</span><div class="toggle on" onclick="toast('ok','2FA','Login pe OTP on hai.')"></div></div>
+        <div class="set-item"><span>Password</span><span style="font-size:12px;color:var(--text-faint)">••••••</span></div>
         <button class="pbtn" style="margin-top:18px" onclick="openChangePwd()">${svg('key')} Change password</button></div>
     </div>
+
     <div class="panel glass" style="margin-top:18px"><div class="panel-h"><h3>My recent activity</h3></div>
       <div class="activity">${(DB.logs||[]).filter(l=>l.who===u.name).slice(0,5).map(l=>`<div class="act"><div class="ad">${svg('activity')}</div><div><div class="txt">You ${l.act} <b>${l.obj}</b></div><div class="time">${l.dept} · ${l.time}</div></div></div>`).join('')||'<div class="empty" style="padding:24px">'+svg('activity')+'<h4>No activity yet</h4></div>'}</div></div>`;}
 function saveProfile(ev){const name=document.getElementById('p-name').value.trim();if(!name)return;
