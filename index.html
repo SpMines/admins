@@ -539,7 +539,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
    Author: Somnath Karmakar
    ================================================================ */
 const CONFIG = {
-  GAS_URL : 'https://script.google.com/macros/s/AKfycbwpJQJkoeRn3NnjC3kv6fuVkopQoEqFUerCTIjqj3Xe0aIXnzTLSivZwGi-7UE4z-96/exec',
+  GAS_URL : 'https://script.google.com/macros/s/AKfycbwIGQ_wUou5cHmAIHPzOoXD9XHvfPk1myPob9p9FWBAIw_uwJ6tqmrMDrF71x1QAs-4/exec',
   GOOGLE_CLIENT_ID : '',   // <-- paste your Google OAuth Client ID for real "Continue with Google"
   SESSION_HOURS : 12,
   OTP_DEBUG_FALLBACK : false
@@ -661,7 +661,7 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mock
     case'verifyOtp':return res(String(p.code)===String(MOCK_OTP)?{ok:true}:{ok:false,error:'Incorrect code.'});
     case'getBusinessesPublic':return res({ok:true,businesses:m.biz.map(b=>({id:b.id,name:b.name}))});
     case'bootstrap':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);const view=mView(s,p)||(biz[0]?biz[0].name:'');
-      const dv=(m.depts[view]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin')?true:d.name===(s.dept||''));
+      const dv=(m.depts[view]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin'||s.role==='Department Manager')?true:d.name===(s.dept||''));
       return res({ok:true,role:s.role,business:s.business,isSuper:s.all,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0})),viewBusiness:view,
         departments:dv,users:(s.canUsers?mUsersFor(s,view):[]),logs:m.logs.slice(0,12),requests:(s.above?mReqs(s,view):[])});}
     case'getBusinesses':{s=mScope(p);const biz=s.all?m.biz:m.biz.filter(b=>b.name===s.business);return res({ok:true,businesses:biz.map(b=>({id:b.id,name:b.name,color:b.color||0}))});}
@@ -680,7 +680,7 @@ function mockApi(action,p){return new Promise(res=>setTimeout(()=>{ const m=mock
     case'deleteBusiness':{s=mScope(p);const b=m.biz.find(x=>x.id===p.id);if(!b)return res({ok:false,error:'Not found'});
       m.biz=m.biz.filter(x=>x.id!==p.id);delete m.depts[b.name];delete m.items[b.name];m.users=m.users.filter(u=>u.business!==b.name);m.requests=m.requests.filter(r=>r.business!==b.name);
       mLog(s.name,'deleted business',b.name,b.name,'');mockPut();return res({ok:true,businesses:m.biz.map(x=>({id:x.id,name:x.name,color:x.color||0}))});}
-    case'getDepartments':{s=mScope(p);const v=mView(s,p);const dv=(m.depts[v]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin')?true:d.name===(s.dept||''));return res({ok:true,departments:dv.map(d=>({...d,business:v}))});}
+    case'getDepartments':{s=mScope(p);const v=mView(s,p);const dv=(m.depts[v]||[]).filter(d=>(s.role==='Super Admin'||s.role==='Admin'||s.role==='Department Manager')?true:d.name===(s.dept||''));return res({ok:true,departments:dv.map(d=>({...d,business:v}))});}
     case'addDepartment':{s=mScope(p);if(!s.canDepts)return res({ok:false,error:'No permission'});const v=mView(s,p);if(!v)return res({ok:false,error:'Select a business first'});
       if(!m.depts[v])m.depts[v]=[];if(m.depts[v].some(d=>d.name.toLowerCase()===String(p.name).toLowerCase()))return res({ok:false,error:'Department already exists'});
       m.depts[v].push({id:mkid(),name:p.name,icon:p.icon||'building',color:p.color||0,desc:p.desc||'',order:m.depts[v].length+1});
