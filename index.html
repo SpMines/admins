@@ -30,7 +30,8 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .modal.show{display:flex;animation:flFade .2s ease}
 @keyframes flPop{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
 .modal-card{width:min(380px,100%);background:rgba(20,20,32,.94);border:1px solid var(--brd);border-radius:20px;padding:26px 24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);animation:flPop .28s cubic-bezier(.2,.85,.3,1.25)}
-.modal-card.wide{width:min(640px,100%);text-align:left;max-height:90dvh;overflow-y:auto}
+.modal-card.wide{width:min(680px,100%);text-align:left;max-height:90dvh;overflow-y:auto}
+.modal-card.od{width:min(760px,100%);text-align:left;max-height:92dvh;overflow-y:auto;padding:0}
 .modal-ic{font-size:34px;margin-bottom:10px}
 .modal-title{font-size:18px;font-weight:600;margin-bottom:8px}
 .modal-msg{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:22px;white-space:pre-line}
@@ -56,6 +57,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.18);background:rgba(255,255,255,.06)}
 .field select option{background:#13131c}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;align-items:center}
 .chk{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);cursor:pointer;user-select:none}
 .chk input{width:auto;accent-color:var(--accent);transform:scale(1.2)}
 .linky{background:none;border:none;color:#8fd0ff;font-size:13px;cursor:pointer;font-family:'Jost'}
@@ -73,7 +75,10 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .nav button{flex-shrink:0;padding:9px 16px;border-radius:30px;border:1px solid var(--brd);background:var(--inp);color:var(--muted);font-size:13.5px;font-weight:500;cursor:pointer;transition:.2s;white-space:nowrap}
 .nav button.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;box-shadow:0 8px 20px rgba(124,92,255,.35)}
 
-.content{position:relative;z-index:1;max-width:1150px;margin:0 auto;padding:20px 18px 90px}
+/* v3.1: stretch to full laptop/desktop width instead of a narrow fixed column */
+.content{position:relative;z-index:1;width:100%;max-width:1720px;margin:0 auto;padding:20px 28px 90px}
+@media(min-width:1400px){ .content{padding:24px 48px 100px} }
+@media(max-width:900px){ .content{padding:16px 14px 90px} }
 
 .authwrap{position:relative;z-index:1;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
 .authcard{width:min(410px,100%);background:rgba(13,13,24,.55);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--brd);border-radius:24px;padding:34px 28px;box-shadow:0 30px 80px rgba(0,0,0,.55)}
@@ -81,7 +86,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .authcard .sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:24px}
 .authfoot{text-align:center;margin-top:14px}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
 .stat{background:var(--card);border:1px solid var(--brd);border-radius:16px;padding:16px 18px;cursor:pointer;transition:.2s}
 .stat:hover{border-color:rgba(124,92,255,.4)}
 .stat.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,92,255,.2)}
@@ -92,12 +97,17 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .box h4{font-size:15px;font-weight:600;margin-bottom:14px}
 
 .badge{display:inline-block;padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
-.bg-Pending{background:rgba(154,160,180,.18);color:#c2c7d6;border:1px solid rgba(154,160,180,.35)}
+.bg-Pending,.bg-Locked{background:rgba(154,160,180,.18);color:#c2c7d6;border:1px solid rgba(154,160,180,.35)}
 .bg-Running{background:rgba(70,181,255,.16);color:#8fd0ff;border:1px solid rgba(70,181,255,.4)}
 .bg-Completed{background:rgba(55,211,153,.16);color:#7fe9c0;border:1px solid rgba(55,211,153,.4)}
 .bg-Delayed{background:rgba(255,93,108,.16);color:#ff97a2;border:1px solid rgba(255,93,108,.4)}
 .bg-Owner,.bg-Admin{background:rgba(124,92,255,.18);color:#c9bdff;border:1px solid rgba(124,92,255,.4)}
 .bg-Role{background:rgba(154,160,180,.14);color:#c2c7d6;border:1px solid rgba(154,160,180,.3)}
+
+/* FILTER ROW (Orders — advance report tracking) */
+.filterrow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;align-items:center;background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:12px 14px}
+.filterrow select,.filterrow input[type=date]{padding:9px 12px;border-radius:10px;background:var(--inp);border:1px solid var(--brd);color:var(--txt);font-size:13.5px;outline:none;font-family:'Jost'}
+.filterrow .lbl{font-size:11.5px;color:var(--muted);margin-right:-4px}
 
 /* ORDERS TABLE */
 .toolrow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;align-items:center}
@@ -117,22 +127,42 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:14px 0;font-size:13px;color:var(--muted)}
 .tablewrap{overflow-x:auto}
 
-/* ORDER DETAIL STEPS */
+/* ORDER DETAIL — v3.1 minimal, stretched, live countdown */
+.od-head{padding:22px 26px 16px;border-bottom:1px solid var(--brd);position:sticky;top:0;background:rgba(20,20,32,.97);backdrop-filter:blur(10px);z-index:2}
+.od-head .odTitle{font-size:19px;font-weight:700}
+.od-head .odSub{font-size:12.5px;color:var(--muted);margin-top:4px}
+.od-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.od-chip{font-size:11.5px;padding:5px 12px;border-radius:20px;background:var(--inp);border:1px solid var(--brd);color:var(--muted)}
+.od-chip b{color:var(--txt);font-weight:500}
+.od-drive{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 12px;border-radius:20px;background:rgba(55,211,153,.1);border:1px solid rgba(55,211,153,.3);color:#7fe9c0;text-decoration:none}
+.od-items{padding:14px 26px;border-bottom:1px solid var(--brd)}
+.od-items h5{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+.itable{width:100%;font-size:13px;border-collapse:collapse}
+.itable td{padding:5px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+.itable td:last-child{text-align:right;color:var(--muted)}
+.od-body{padding:8px 26px 26px}
+
 .ostep{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .ostep:last-child{border:none}
+.ostep.locked{opacity:.5}
 .oseq{width:30px;height:30px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;border:1px solid var(--brd);background:var(--inp)}
 .oseq.done{background:rgba(55,211,153,.16);color:#7fe9c0;border-color:rgba(55,211,153,.45)}
 .oseq.run{background:rgba(70,181,255,.16);color:#8fd0ff;border-color:rgba(70,181,255,.45)}
 .oseq.late{background:rgba(255,93,108,.16);color:#ff97a2;border-color:rgba(255,93,108,.45)}
-.ostep .m{flex:1}
+.ostep .m{flex:1;min-width:0}
 .ostep .nm{font-size:14.5px;font-weight:600}
 .ostep .dd{font-size:12px;color:var(--muted);margin-top:2px}
 .ostep .doc{font-size:12px;margin-top:4px}
 .ostep .doc a{color:#8fd0ff;text-decoration:none}
 .ostep .acts{display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center}
+.countdown{font-size:11.5px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+.countdown.run{color:#8fd0ff}
+.countdown.late{color:#ff97a2}
+.od-foot{display:flex;gap:10px;padding:16px 26px;border-top:1px solid var(--brd);position:sticky;bottom:0;background:rgba(20,20,32,.97)}
+.od-foot .btn{margin-top:0}
 
 /* TEMPLATE BUILDER */
-.flow{display:flex;flex-direction:column;max-width:640px;margin:0 auto}
+.flow{display:flex;flex-direction:column;max-width:680px;margin:0 auto}
 .stepcard{position:relative;background:rgba(13,13,24,.55);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--brd);border-radius:18px;padding:15px 15px 13px 19px;box-shadow:0 18px 50px rgba(0,0,0,.45);transition:.2s}
 .stepcard[draggable=true]{cursor:grab}
 .stepcard:hover{transform:translateY(-2px);border-color:rgba(124,92,255,.35)}
@@ -176,6 +206,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
   .row2,.permgrid{grid-template-columns:1fr}
   .logo .tag{display:none}
   .otable .hidem{display:none}
+  .od-head,.od-items,.od-body,.od-foot{padding-left:16px;padding-right:16px}
 }
 </style>
 </head>
@@ -253,8 +284,17 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
   <!-- ORDERS -->
   <div id="page-orders">
     <div class="cards" id="orderStats"></div>
+    <div class="filterrow">
+      <span class="lbl">🧩 Template</span>
+      <select id="f_wf" onchange="ORD_PAGE=1;loadOrders()"><option value="">All templates</option></select>
+      <span class="lbl">From</span>
+      <input type="date" id="f_from" onchange="ORD_PAGE=1;loadOrders()">
+      <span class="lbl">To</span>
+      <input type="date" id="f_to" onchange="ORD_PAGE=1;loadOrders()">
+      <button class="btn sm ghost" onclick="clearFilters()">✕ Clear filters</button>
+    </div>
     <div class="toolrow">
-      <input type="search" id="oq" placeholder="Search order id, title, party, step…" onkeydown="if(event.key==='Enter')searchOrders()">
+      <input type="search" id="oq" placeholder="Search order id, title, party, receiver, step…" onkeydown="if(event.key==='Enter')searchOrders()">
       <button class="btn sm ghost" onclick="searchOrders()">🔍 Search</button>
       <button class="btn sm" onclick="openNewOrder()">＋ New Order</button>
     </div>
@@ -262,7 +302,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
       <div class="tablewrap">
         <table class="otable">
           <thead><tr>
-            <th>Order</th><th>Title / Party</th><th class="hidem">Current Step</th>
+            <th>Order</th><th>Title / Party</th><th class="hidem">Receiver</th><th class="hidem">Current Step</th>
             <th>Progress</th><th>Status</th><th class="hidem">Created</th>
           </tr></thead>
           <tbody id="orderRows"></tbody>
@@ -343,7 +383,18 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
       <div class="field"><label>Order Title *</label><input id="no_title" placeholder="e.g. Bearing purchase — crusher #2"></div>
       <div class="field"><label>Party / Vendor</label><input id="no_party" placeholder="Optional"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Receiver Name *</label><input id="no_receiver" placeholder="Who receives / raises this order"></div>
+      <div class="field"><label>Required Person *</label><input id="no_reqperson" placeholder="Person this is required for"></div>
+    </div>
     <div class="field"><label>Notes</label><textarea id="no_notes" placeholder="Optional"></textarea></div>
+
+    <div class="field">
+      <label>Items *</label>
+      <div id="no_items"></div>
+      <button class="btn sm ghost" style="margin-top:6px" onclick="addItemRow()">＋ Add Item</button>
+    </div>
+
     <div class="modal-acts">
       <button class="btn ghost" onclick="closeOrderModal()">Cancel</button>
       <button class="btn" onclick="createOrder()">Create — Clock Starts Now ▶</button>
@@ -353,11 +404,20 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 
 <!-- ORDER DETAIL MODAL -->
 <div class="modal" id="odModal" onclick="if(event.target===this)closeOd()">
-  <div class="modal-card wide">
-    <div class="modal-title" id="odTitle" style="margin-bottom:4px"></div>
-    <div class="osub" id="odSub" style="margin-bottom:16px"></div>
-    <div id="odSteps"></div>
-    <div class="modal-acts" style="margin-top:16px">
+  <div class="modal-card od">
+    <div class="od-head">
+      <div class="odTitle" id="odTitle"></div>
+      <div class="odSub" id="odSub"></div>
+      <div class="od-meta" id="odMeta"></div>
+    </div>
+    <div class="od-items" id="odItemsWrap" style="display:none">
+      <h5>📦 Items</h5>
+      <table class="itable" id="odItems"></table>
+    </div>
+    <div class="od-body">
+      <div id="odSteps"></div>
+    </div>
+    <div class="od-foot">
       <button class="btn ghost" onclick="closeOd()">Close</button>
       <button class="btn danger" id="odDelBtn" onclick="deleteOrder()" style="display:none">🗑 Delete Order</button>
     </div>
@@ -416,7 +476,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 
 <script>
 /* ================= CONFIG ================= */
-const API = "https://script.google.com/macros/s/AKfycbyCg8ykWIFazW32YeG8TaQbd19-_j2V1U72weQPo0GzUCxZctgWwY_WJ8iN2ZAegxLL/exec";
+const API = "https://script.google.com/macros/s/AKfycbwliF8qcMXCp_OtSXHz_CxRGgVXdLa0w70VmngTjEZEzL3FZ32MusKHa2czw3LBzXfF/exec";
 
 /* ================= CORE ================= */
 let _busy=0;
@@ -427,6 +487,12 @@ function rawApi(p){
   return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
     .then(r=>r.json()).then(d=>{hideLoader();return d;})
     .catch(e=>{hideLoader();toast('Network error — check internet / GAS access','err');throw e;});
+}
+/** Silent variant — used by the background poller so it never flashes the full-screen loader. */
+function apiSilent(p){
+  if(SESSION){ p.user = SESSION.email; p.token = SESSION.token; }
+  return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
+    .then(r=>r.json()).then(d=> d.ok ? d.data : Promise.reject(new Error(d.error||'Server error')));
 }
 function api(p){
   if(SESSION){ p.user = SESSION.email; p.token = SESSION.token; }
@@ -461,12 +527,25 @@ function fmtDT(iso){
   return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
 }
 function hrs(m){ m=Number(m)||0; return m>=1440?(m/1440).toFixed(1)+' d':m>=60?(m/60).toFixed(1)+' hr':m+' min'; }
+function parseTS(iso){ let d=new Date(String(iso).replace(' ','T')); if(isNaN(d)) d=new Date(iso); return d; }
+/** mm:ss / hh:mm:ss style countdown-or-overdue string, live-ticking. */
+function countdownStr(deadlineIso){
+  const diff = parseTS(deadlineIso).getTime() - Date.now();
+  const late = diff < 0;
+  let s = Math.abs(Math.round(diff/1000));
+  const d = Math.floor(s/86400); s%=86400;
+  const h = Math.floor(s/3600); s%=3600;
+  const m = Math.floor(s/60); s%=60;
+  let out = d>0 ? d+'d '+h+'h' : h>0 ? h+'h '+m+'m' : m+'m '+s+'s';
+  return late ? ('⚠ '+out+' overdue') : ('⏳ '+out+' left');
+}
 
 /* ================= STATE ================= */
 let SESSION=null, PERMS={}, ROLE='', ROLES=[];
 let TEMPLATES=[], CURTPL=localStorage.getItem('fms_tpl')||'', TSTEPS=[];
-let ORD_PAGE=1, ORD_STATUS='All', CUR_ORDER=null, UPLOAD_OS=null;
-let EDIT_ID=null, INSERT_AFTER=null;
+let ORD_PAGE=1, ORD_STATUS='All', CUR_ORDER=null, CUR_STEPS=[], UPLOAD_OS=null;
+let EDIT_ID=null, INSERT_AFTER=null, ITEM_ROW_N=0;
+let ODTICK=null, ODPOLL=null;
 try{ SESSION = JSON.parse(localStorage.getItem('fms_session_v3')||'null'); }catch(e){}
 function can(k){ return PERMS[k]===true; }
 
@@ -591,8 +670,24 @@ function go(p){
 /* ================= ORDERS LIST ================= */
 function searchOrders(){ ORD_PAGE=1; loadOrders(); }
 function setOrdStatus(s){ ORD_STATUS=s; ORD_PAGE=1; loadOrders(); }
+function clearFilters(){
+  document.getElementById('f_wf').value='';
+  document.getElementById('f_from').value='';
+  document.getElementById('f_to').value='';
+  document.getElementById('oq').value='';
+  ORD_STATUS='All'; ORD_PAGE=1; loadOrders();
+}
+function fillFilterTemplates(){
+  api({action:'listTemplates'}).then(list=>{
+    const sel=document.getElementById('f_wf');
+    const cur=sel.value;
+    sel.innerHTML='<option value="">All templates</option>'+list.map(t=>`<option value="${t.wf_id}">${esc(t.name)}</option>`).join('');
+    sel.value=cur;
+  }).catch(()=>{});
+}
 function loadOrders(){
-  api({action:'listOrders', q:document.getElementById('oq').value.trim(), status:ORD_STATUS, page:ORD_PAGE})
+  api({action:'listOrders', q:document.getElementById('oq').value.trim(), status:ORD_STATUS, page:ORD_PAGE,
+    wf_id:document.getElementById('f_wf').value, from:document.getElementById('f_from').value, to:document.getElementById('f_to').value})
   .then(d=>{
     const c=d.counts;
     const stat=(label,n,key,color)=>`<div class="stat ${ORD_STATUS===key?'on':''}" onclick="setOrdStatus('${key}')">
@@ -608,12 +703,13 @@ function loadOrders(){
       return `<tr class="orow" onclick="openOrder('${o.order_id}')">
         <td class="oid">${esc(o.order_id)}</td>
         <td><div class="otitle">${esc(o.title)}</div><div class="osub">${esc(o.party)||'—'} · by ${esc(o.created_by)}</div></td>
+        <td class="hidem">${esc(o.receiver)||'—'}</td>
         <td class="hidem">${esc(o.current)}</td>
         <td class="oprog"><div class="osub">${o.done}/${o.total} steps</div><div class="pbar"><i style="width:${pct}%"></i></div></td>
         <td><span class="badge bg-${esc(o.status)}">${esc(o.status)}</span></td>
         <td class="hidem osub">${fmtDT(o.created_at)}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="6"><div class="empty"><div class="big">📦</div>No orders found</div></td></tr>`;
+    }).join('') : `<tr><td colspan="7"><div class="empty"><div class="big">📦</div>No orders found</div></td></tr>`;
 
     document.getElementById('pager').innerHTML = d.pages>1 ?
       `<button class="btn sm ghost" ${d.page<=1?'disabled':''} onclick="ORD_PAGE--;loadOrders()">← Prev</button>
@@ -621,9 +717,28 @@ function loadOrders(){
        <button class="btn sm ghost" ${d.page>=d.pages?'disabled':''} onclick="ORD_PAGE++;loadOrders()">Next →</button>`
       : `<span>${d.total} order${d.total===1?'':'s'}</span>`;
   });
+  if(!document.getElementById('f_wf').options.length || document.getElementById('f_wf').options.length===1)
+    fillFilterTemplates();
 }
 
 /* ================= NEW ORDER ================= */
+function addItemRow(name,qty){
+  ITEM_ROW_N++;
+  const id='it_'+ITEM_ROW_N;
+  const wrap=document.getElementById('no_items');
+  const row=document.createElement('div');
+  row.className='row3'; row.style.marginBottom='8px'; row.id=id;
+  row.innerHTML=`<input placeholder="Item name" value="${esc(name||'')}" class="it_name">
+    <input type="number" min="0" step="1" placeholder="Qty" value="${qty||''}" class="it_qty">
+    <button class="icobtn red" onclick="document.getElementById('${id}').remove()">✕</button>`;
+  wrap.appendChild(row);
+}
+function collectItems(){
+  return Array.from(document.querySelectorAll('#no_items .row3')).map(r=>({
+    name: r.querySelector('.it_name').value.trim(),
+    qty: Number(r.querySelector('.it_qty').value)||0
+  })).filter(it=>it.name);
+}
 function openNewOrder(){
   api({action:'listTemplates'}).then(list=>{
     TEMPLATES=list;
@@ -635,67 +750,120 @@ function openNewOrder(){
       `<option value="${t.wf_id}">${esc(t.name)} (${t.steps} steps)</option>`).join('');
     document.getElementById('no_title').value=''; document.getElementById('no_party').value='';
     document.getElementById('no_notes').value='';
+    document.getElementById('no_receiver').value=''; document.getElementById('no_reqperson').value='';
+    document.getElementById('no_items').innerHTML=''; ITEM_ROW_N=0;
+    addItemRow();
     document.getElementById('orderModal').classList.add('show');
   });
 }
 function closeOrderModal(){ document.getElementById('orderModal').classList.remove('show'); }
 function createOrder(){
   const t=document.getElementById('no_title').value.trim();
+  const receiver=document.getElementById('no_receiver').value.trim();
+  const reqperson=document.getElementById('no_reqperson').value.trim();
+  const items=collectItems();
   if(!t) return toast('Order title required','err');
+  if(!receiver) return toast('Receiver name required','err');
+  if(!reqperson) return toast('Required person required','err');
+  if(!items.length) return toast('Add at least one item with quantity','err');
   api({action:'createOrder', wf_id:document.getElementById('no_tpl').value,
     title:t, party:document.getElementById('no_party').value.trim(),
-    notes:document.getElementById('no_notes').value.trim()})
+    notes:document.getElementById('no_notes').value.trim(),
+    receiver:receiver, required_person:reqperson, items:items})
   .then(d=>{ closeOrderModal(); loadOrders(); toast(d.order_id+' created — clock running ▶','ok'); });
 }
 
-/* ================= ORDER DETAIL ================= */
+/* ================= ORDER DETAIL (v3.1 — minimal, live countdown, auto-refresh) ================= */
+function stopOdTimers(){
+  if(ODTICK){ clearInterval(ODTICK); ODTICK=null; }
+  if(ODPOLL){ clearInterval(ODPOLL); ODPOLL=null; }
+}
 function openOrder(id){
-  api({action:'getOrder', order_id:id}).then(d=>{
-    CUR_ORDER=d.order;
-    document.getElementById('odTitle').textContent = d.order.order_id+' — '+d.order.title;
-    document.getElementById('odSub').textContent =
-      (d.order.party?d.order.party+' · ':'')+'by '+d.order.created_by+' · '+fmtDT(d.order.created_at)
-      +(d.order.notes?' · '+d.order.notes:'');
-    document.getElementById('odDelBtn').style.display = can('can_build')?'':'none';
+  stopOdTimers();
+  fetchAndRenderOrder(id, true);
+  document.getElementById('odModal').classList.add('show');
+  ODTICK = setInterval(()=> tickCountdowns(), 1000);              // live per-second countdown, no network
+  ODPOLL = setInterval(()=> fetchAndRenderOrder(id, false), 15000); // silent background refresh, no reload/flash
+}
+function fetchAndRenderOrder(id, showLoaderFlag){
+  const call = showLoaderFlag ? api({action:'getOrder', order_id:id}) : apiSilent({action:'getOrder', order_id:id});
+  return call.then(d=>{
+    CUR_ORDER=d.order; CUR_STEPS=d.steps;
+    renderOrderDetail();
+  }).catch(()=>{});
+}
+function tickCountdowns(){
+  document.querySelectorAll('#odSteps [data-deadline]').forEach(el=>{
+    const iso = el.getAttribute('data-deadline');
+    const late = parseTS(iso).getTime() < Date.now();
+    el.textContent = countdownStr(iso);
+    el.className = 'countdown ' + (late?'late':'run');
+  });
+}
+function renderOrderDetail(){
+  const o=CUR_ORDER, steps=CUR_STEPS;
+  document.getElementById('odTitle').textContent = o.order_id+' — '+o.title;
+  document.getElementById('odSub').textContent = 'by '+o.created_by+' · '+fmtDT(o.created_at)+(o.notes?' · '+o.notes:'');
+  document.getElementById('odDelBtn').style.display = can('can_build')?'':'none';
 
-    document.getElementById('odSteps').innerHTML = d.steps.map(s=>{
-      const cls = s.live==='Completed'?'done':s.live==='Delayed'?'late':s.live==='Running'?'run':'';
-      const mine = can('can_execute_all') || (can('can_execute_assigned') && s.role===ROLE);
-      const actionable = mine && (s.live==='Running'||s.live==='Delayed');
-      const needsDoc = String(s.needs_doc)==='true';
-      let act='';
-      if(actionable){
-        act = needsDoc
-          ? `<button class="btn sm" onclick="pickFile('${s.os_id}')">📄 Upload & Complete</button>`
-          : `<button class="btn sm" onclick="markDone('${s.os_id}')">✔ Mark Done</button>`;
-        if(needsDoc && s.doc_url) act += `<button class="btn sm ghost" onclick="markDone('${s.os_id}')">✔ Done</button>`;
-      } else if((s.live==='Running'||s.live==='Delayed') && !mine){
-        act = `<span class="osub">for ${esc(s.role)||'—'}</span>`;
-      }
-      return `<div class="ostep">
-        <div class="oseq ${cls}">${s.live==='Completed'?'✓':s.seq}</div>
+  const chips=[];
+  if(o.party) chips.push(`<span class="od-chip">🏢 <b>${esc(o.party)}</b></span>`);
+  if(o.receiver) chips.push(`<span class="od-chip">🎯 Receiver: <b>${esc(o.receiver)}</b></span>`);
+  if(o.required_person) chips.push(`<span class="od-chip">🙋 Required for: <b>${esc(o.required_person)}</b></span>`);
+  if(o.drive_folder_url) chips.push(`<a class="od-drive" href="${esc(o.drive_folder_url)}" target="_blank">📁 Open Drive Folder ↗</a>`);
+  document.getElementById('odMeta').innerHTML = chips.join('');
+
+  const itemsWrap=document.getElementById('odItemsWrap');
+  const items = o.items || [];
+  if(items.length){
+    itemsWrap.style.display='block';
+    document.getElementById('odItems').innerHTML = items.map(it=>`<tr><td>${esc(it.name)}</td><td>Qty: ${it.qty}</td></tr>`).join('');
+  } else itemsWrap.style.display='none';
+
+  document.getElementById('odSteps').innerHTML = steps.map(s=>{
+    const locked = s.live==='Locked' || s.live==='Pending';
+    const cls = s.live==='Completed'?'done':s.live==='Delayed'?'late':s.live==='Running'?'run':'';
+    const mine = can('can_execute_all') || (can('can_execute_assigned') && s.role===ROLE);
+    const actionable = mine && !locked && (s.live==='Running'||s.live==='Delayed');
+    const needsDoc = String(s.needs_doc)==='true';
+    let act='';
+    if(actionable){
+      act = needsDoc
+        ? `<button class="btn sm" onclick="pickFile('${s.os_id}')">📄 Upload & Complete</button>`
+        : `<button class="btn sm" onclick="markDone('${s.os_id}')">✔ Mark Done</button>`;
+      if(needsDoc && s.doc_url) act += `<button class="btn sm ghost" onclick="markDone('${s.os_id}')">✔ Done</button>`;
+    } else if(locked){
+      act = `<span class="osub">🔒 Locked</span>`;
+    } else if((s.live==='Running'||s.live==='Delayed') && !mine){
+      act = `<span class="osub">for ${esc(s.role)||'—'}</span>`;
+    }
+    const showCountdown = (s.live==='Running'||s.live==='Delayed');
+    return `<div class="ostep ${locked?'locked':''}">
+        <div class="oseq ${cls}">${s.live==='Completed'?'✓':locked?'🔒':s.seq}</div>
         <div class="m">
           <div class="nm">${esc(s.name)} ${needsDoc?'<span class="sc-tag t-doc" style="margin:0 0 0 6px">📄 doc</span>':''}</div>
           <div class="dd">
-            ${s.role?'🛡️ '+esc(s.role)+' · ':''}TAT ${hrs(s.tat_mins)} · ⏳ Deadline: <b>${fmtDT(s.deadline_ts)}</b>
-            ${Number(s.delay_mins)>0?` · <span style="color:#ff97a2">⚠ ${hrs(s.delay_mins)} late</span>`:''}
+            ${s.role?'🛡️ '+esc(s.role)+' · ':''}TAT ${hrs(s.tat_mins)}
             ${s.done_ts?` · ✅ ${fmtDT(s.done_ts)} by ${esc(s.done_by)}`:''}
           </div>
+          ${showCountdown?`<div class="countdown" data-deadline="${esc(s.deadline_ts)}">${countdownStr(s.deadline_ts)}</div>`:''}
           ${s.doc_url?`<div class="doc">📎 <a href="${esc(s.doc_url)}" target="_blank">${esc(s.doc_name)||'Document'}</a></div>`:''}
         </div>
         <div class="acts">
-          <span class="badge bg-${s.live}">${s.live}</span>
+          <span class="badge bg-${s.live}">${locked?'Locked':s.live}</span>
           ${act}
         </div>
       </div>`;
-    }).join('');
-    document.getElementById('odModal').classList.add('show');
-  });
+  }).join('');
 }
-function closeOd(){ document.getElementById('odModal').classList.remove('show'); loadOrders(); }
+function closeOd(){
+  stopOdTimers();
+  document.getElementById('odModal').classList.remove('show');
+  loadOrders();
+}
 function markDone(osId){
   api({action:'completeOrderStep', os_id:osId})
-    .then(()=>{ toast('Step completed ✔ — next step clock started','ok'); openOrder(CUR_ORDER.order_id); });
+    .then(()=>{ toast('Step completed ✔ — next step clock started','ok'); fetchAndRenderOrder(CUR_ORDER.order_id, true); });
 }
 function pickFile(osId){ UPLOAD_OS=osId; document.getElementById('fileInput').value=''; document.getElementById('fileInput').click(); }
 function fileChosen(inp){
@@ -707,7 +875,7 @@ function fileChosen(inp){
     const b64 = String(r.result).split(',')[1];
     api({action:'uploadDoc', os_id:UPLOAD_OS, filename:f.name, mimeType:f.type, data:b64})
       .then(d=>{ toast(d.completed?'Document uploaded → step completed ✔':'Document uploaded ✔','ok');
-        openOrder(CUR_ORDER.order_id); });
+        fetchAndRenderOrder(CUR_ORDER.order_id, true); });
   };
   r.readAsDataURL(f);
 }
@@ -716,7 +884,7 @@ function deleteOrder(){
     message:CUR_ORDER.order_id+' and all its step data will be removed permanently.',
     confirmText:'Delete Order',
     onConfirm:()=> api({action:'deleteOrder', order_id:CUR_ORDER.order_id})
-      .then(()=>{ document.getElementById('odModal').classList.remove('show'); loadOrders(); toast('Order deleted','ok'); })
+      .then(()=>{ stopOdTimers(); document.getElementById('odModal').classList.remove('show'); loadOrders(); toast('Order deleted','ok'); })
   });
 }
 
@@ -905,7 +1073,7 @@ function delStep(id,name){
     onConfirm:()=> api({action:'deleteStep', step_id:id}).then(()=>loadTemplate()).then(()=>toast('Step deleted ✔','ok'))
   });
 }
-function dupStep(id){ api({action:'duplicateStep', step_id:id}).then(()=>loadTemplate()).then(()=>toast('Duplicated ✔','ok')); }
+function dupStep(id){ api({action:'duplicateStep', step_id:id}).then(()=>loadTemplate()).then(()=>toast('Duplicated ✔ (locked behind original)','ok')); }
 function toggleStep(id){ api({action:'toggleStep', step_id:id}).then(d=>loadTemplate().then(()=>toast(d.enabled?'Enabled ✔':'Disabled','ok'))); }
 
 /* ================= TEAM ================= */
