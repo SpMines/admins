@@ -31,7 +31,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 @keyframes flPop{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
 .modal-card{width:min(380px,100%);background:rgba(20,20,32,.94);border:1px solid var(--brd);border-radius:20px;padding:26px 24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);animation:flPop .28s cubic-bezier(.2,.85,.3,1.25)}
 .modal-card.wide{width:min(680px,100%);text-align:left;max-height:90dvh;overflow-y:auto}
-.modal-card.od{width:min(760px,100%);text-align:left;max-height:92dvh;overflow-y:auto;padding:0}
+.modal-card.od{width:min(1200px,94vw);text-align:left;max-height:92dvh;overflow-y:auto;padding:0}
 .modal-ic{font-size:34px;margin-bottom:10px}
 .modal-title{font-size:18px;font-weight:600;margin-bottom:8px}
 .modal-msg{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:22px;white-space:pre-line}
@@ -159,13 +159,14 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 .countdown.run{color:#8fd0ff}
 .countdown.late{color:#ff97a2}
 .od-foot{display:flex;gap:10px;padding:16px 26px;border-top:1px solid var(--brd);position:sticky;bottom:0;background:rgba(20,20,32,.97)}
-.od-foot .btn{margin-top:0}
+.od-foot .btn{margin-top:0;flex:1;width:auto}
 
 /* TEMPLATE BUILDER */
-.flow{display:flex;flex-direction:column;max-width:680px;margin:0 auto}
-.stepcard{position:relative;background:rgba(13,13,24,.55);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--brd);border-radius:18px;padding:15px 15px 13px 19px;box-shadow:0 18px 50px rgba(0,0,0,.45);transition:.2s}
+.flow{display:flex;flex-direction:column;width:100%;max-width:100%;margin:0 auto}
+.stepcard{position:relative;background:rgba(13,13,24,.55);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--brd);border-radius:18px;padding:15px 15px 13px 19px;box-shadow:0 18px 50px rgba(0,0,0,.45);transition:.2s;cursor:default}
 .stepcard[draggable=true]{cursor:grab}
-.stepcard:hover{transform:translateY(-2px);border-color:rgba(124,92,255,.35)}
+.stepcard:hover{transform:translateY(-2px);border-color:rgba(124,92,255,.35);cursor:default}
+.stepcard[draggable=true]:hover{cursor:grab}
 .stepcard.dragging{opacity:.45;transform:scale(.98)}
 .stepcard.dropTarget{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.25)}
 .stepcard.off{opacity:.45;filter:grayscale(.6)}
@@ -380,7 +381,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
     <div class="modal-title" style="margin-bottom:18px">＋ New Order</div>
     <div class="field"><label>Template *</label><select id="no_tpl"></select></div>
     <div class="row2">
-      <div class="field"><label>Order Title *</label><input id="no_title" placeholder="e.g. Bearing purchase — crusher #2"></div>
+      <div class="field"><label>Order Title</label><input id="no_title" placeholder="Optional — auto-named from Order ID if left blank"></div>
       <div class="field"><label>Party / Vendor</label><input id="no_party" placeholder="Optional"></div>
     </div>
     <div class="row2">
@@ -476,7 +477,7 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh}
 
 <script>
 /* ================= CONFIG ================= */
-const API = "https://script.google.com/macros/s/AKfycbwliF8qcMXCp_OtSXHz_CxRGgVXdLa0w70VmngTjEZEzL3FZ32MusKHa2czw3LBzXfF/exec";
+const API = "https://script.google.com/macros/s/AKfycbyCg8ykWIFazW32YeG8TaQbd19-_j2V1U72weQPo0GzUCxZctgWwY_WJ8iN2ZAegxLL/exec";
 
 /* ================= CORE ================= */
 let _busy=0;
@@ -762,7 +763,6 @@ function createOrder(){
   const receiver=document.getElementById('no_receiver').value.trim();
   const reqperson=document.getElementById('no_reqperson').value.trim();
   const items=collectItems();
-  if(!t) return toast('Order title required','err');
   if(!receiver) return toast('Receiver name required','err');
   if(!reqperson) return toast('Required person required','err');
   if(!items.length) return toast('Add at least one item with quantity','err');
