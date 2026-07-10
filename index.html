@@ -336,11 +336,11 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API = "https://script.google.com/macros/s/AKfycbzMhv8tpOnWbD7R5sJBn8tvw5CoipJEfyGnU61PzpZ8D2S_s-HeYXsVjIxTvmea0xPS/exec";
+const API = "https://script.google.com/macros/s/AKfycbxPp5kjOrhCqGnWd49sl-v16YREhBnwazyEbnPcTsMhR5J4YBtrthZeM3IqtBZvSS-2/exec";
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
-const API_SET=API && API.indexOf("PASTE_GAS_URL")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
+const API_SET=API && API.indexOf("https://script.google.com/macros/s/AKfycbxPp5kjOrhCqGnWd49sl-v16YREhBnwazyEbnPcTsMhR5J4YBtrthZeM3IqtBZvSS-2/exec")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
 
 let _busy=0;
 function showLoader(){_busy++;document.getElementById('faceLoader').classList.add('show');const t=document.getElementById('topload');t.classList.add('show');t.style.width='75%';}
@@ -413,13 +413,13 @@ function showCfg(){const b=document.getElementById('cfgbar');b.className='cfgbar
   setTimeout(()=>{b.style.transition='.4s';b.style.opacity='0';b.style.padding='0';b.style.height='0';b.style.overflow='hidden';},2600);}
 function buildNav(){
   const tabs=[['dash','Dashboard'],['mytasks','My Tasks']];
-  if(lv()>=2){tabs.push(['tasks','Tasks'],['team','Team Work'],['emps','Employees'],['hols','Holidays']);}
+  if(lv()>=2){tabs.push(['tasks','Tasks'],['team','Team Work'],['emps','Employees'],['hols','Holidays'],['leaves','Leaves']);}
   if(lv()>=3){tabs.push(['depts','Departments'],['admin','Admin']);}
   document.getElementById('mainNav').innerHTML=tabs.map(t=>`<button id="nav_${t[0]}" onclick="nav('${t[0]}')">${t[1]}</button>`).join('');}
 function nav(t){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('nav_'+t);if(b)b.classList.add('active');
-  ({dash:vDash,mytasks:vMyTasks,tasks:vTasks,team:vTeam,emps:vEmps,hols:vHols,depts:vDepts,admin:vAdmin})[t]();}
+  ({dash:vDash,mytasks:vMyTasks,tasks:vTasks,team:vTeam,emps:vEmps,hols:vHols,leaves:vLeaves,depts:vDepts,admin:vAdmin})[t]();}
 const C=()=>document.getElementById('content');
 
 function vDash(){api({action:'dashboard'}).then(d=>{const s=d.stats;
@@ -515,8 +515,9 @@ function vEmps(){C().innerHTML='<div class="box"><h4>Employees '+(lv()>=3?'<butt
       return `<div class="trow"><div><div class="tt">${esc(e.Name)} <span style="font-size:11px;color:var(--muted)">${esc(e.Role)}</span></div>
         <div class="ts">${esc(e.Email)} · ${esc(dp?dp.Name:'No dept')} · Off: ${esc(e.WeeklyOff||'Sun')}</div></div>
         <div class="acts"><span class="badge bg-${e.Status==='Active'?'Done':e.Status==='Pending'?'Pending':'Overdue'}">${esc(e.Status)}</span>${acts}</div></div>`;}).join('');});}
-function openEmpForm(id){const e=id?EMPS.filter(x=>x.ID===id)[0]:{Name:'',Phone:'',Role:'Employee',DepartmentID:'',Designation:'',WeeklyOff:'Sun'};if(id&&!e)return;
+function openEmpForm(id){const e=id?EMPS.filter(x=>x.ID===id)[0]:{Name:'',Phone:'',Role:'Employee',DepartmentID:'',Designation:'',WeeklyOff:'Sun',BuddyID:''};if(id&&!e)return;
   const deptOpts='<option value="">—</option>'+DEPTS.map(d=>`<option value="${esc(d.ID)}" ${e.DepartmentID===d.ID?'selected':''}>${esc(d.Name)}</option>`).join('');
+  const buddyOpts='<option value="">—</option>'+EMPS.filter(x=>x.ID!==id).map(x=>`<option value="${esc(x.ID)}" ${e.BuddyID===x.ID?'selected':''}>${esc(x.Name)}</option>`).join('');
   const roles=['Employee','Manager','Owner','Super Admin'];const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const offs=String(e.WeeklyOff||'Sun').split(',').map(s=>s.trim());
   openForm(id?'Edit: '+e.Name:'Add Employee',`
@@ -526,11 +527,12 @@ function openEmpForm(id){const e=id?EMPS.filter(x=>x.ID===id)[0]:{Name:'',Phone:
     <div class="row2"><div class="field"><label>Role</label><select id="efRole">${roles.map(r=>`<option ${e.Role===r?'selected':''}>${r}</option>`).join('')}</select></div>
       <div class="field"><label>Department</label><select id="efDept">${deptOpts}</select></div></div>
     <div class="field"><label>Designation</label><input id="efDesig" value="${esc(e.Designation)}" placeholder="e.g. Personal Coordinator"></div>
+    <div class="field"><label>Assign Buddy (backup jab leave/absent ho)</label><select id="efBuddy">${buddyOpts}</select></div>
     <div class="field"><label>Weekly Off</label><div class="chiplist">${days.map(d=>`<label class="chip" style="cursor:pointer"><input type="checkbox" class="woDay" value="${d}" ${offs.indexOf(d)>=0?'checked':''} style="accent-color:var(--accent)"> ${d}</label>`).join('')}</div></div>
     ${id?'':'<div class="ts" style="margin-bottom:6px">Temp password auto-generate hoga, email pe chala jayega.</div>'}
     <div class="mc-actionbar"><button class="btn" onclick='saveEmp(${JSON.stringify(id||"")})'>Save</button></div>`);}
 function saveEmp(id){const off=[...document.querySelectorAll('.woDay:checked')].map(x=>x.value).join(',');
-  const emp={ID:id||'',Name:val('efName'),Phone:val('efPhone'),Role:val('efRole'),DepartmentID:val('efDept'),Designation:val('efDesig'),WeeklyOff:off};
+  const emp={ID:id||'',Name:val('efName'),Phone:val('efPhone'),Role:val('efRole'),DepartmentID:val('efDept'),Designation:val('efDesig'),WeeklyOff:off,BuddyID:val('efBuddy')};
   if(!id)emp.Email=val('efEmail');
   api({action:'saveEmployee',emp:emp}).then(d=>{
     if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');vEmps();});}
@@ -557,6 +559,26 @@ function vHols(){C().innerHTML=`<div class="box"><h4>Holiday Calendar</h4>
       :'<div class="empty">No holidays added.</div>';});}
 function saveHol(){api({action:'saveHoliday',date:val('hDate'),name:val('hName')}).then(d=>{if(!d.ok)return toast(d.message,'err');toast(d.message,'ok');vHols();});}
 function delHol(dt){api({action:'deleteHoliday',date:dt}).then(d=>{toast(d.message,'ok');vHols();});}
+
+function vLeaves(){C().innerHTML=`<div class="box"><h4>Leaves</h4>
+  <div class="field"><label>Employee</label><select id="lvEmp"></select></div>
+  <div class="row2"><div class="field"><label>From</label><input id="lvFrom" type="date"></div>
+    <div class="field"><label>To</label><input id="lvTo" type="date"></div></div>
+  <div class="field"><label>Reason</label><input id="lvReason" placeholder="e.g. Sick leave"></div>
+  <button class="btn sm" onclick="saveLeave()">Mark Leave</button><div id="lvList" style="margin-top:16px"></div></div>`;
+  Promise.all([api({action:'listEmployees'}),api({action:'listLeaves'})]).then(([a,b])=>{
+    EMPS=a.employees||[];const leaves=(b.leaves||[]).sort((x,y)=>String(y.DateFrom).localeCompare(String(x.DateFrom)));
+    const byId={};EMPS.forEach(e=>byId[e.ID]=e.Name);
+    document.getElementById('lvEmp').innerHTML=EMPS.map(e=>`<option value="${esc(e.ID)}">${esc(e.Name)}</option>`).join('');
+    document.getElementById('lvList').innerHTML=leaves.length?leaves.map(l=>`<div class="trow"><div><div class="tt">${esc(byId[l.EmployeeID]||'Unknown')}</div>
+      <div class="ts">${esc(String(l.DateFrom).slice(0,10))} → ${esc(String(l.DateTo).slice(0,10))}${l.Reason?' · '+esc(l.Reason):''}</div></div>
+      <div class="acts"><button class="btn danger sm" onclick='delLeave(${JSON.stringify(l.ID)})'>✕</button></div></div>`).join('')
+      :'<div class="empty">No leaves marked.</div>';});}
+function saveLeave(){const from=val('lvFrom'),to=val('lvTo')||from;
+  if(!val('lvEmp')||!from)return toast('Employee aur From date required.','err');
+  api({action:'saveLeave',leave:{EmployeeID:val('lvEmp'),DateFrom:from,DateTo:to,Reason:val('lvReason')}}).then(d=>{
+    if(!d.ok)return toast(d.message,'err');toast(d.message,'ok');vLeaves();});}
+function delLeave(id){api({action:'deleteLeave',id:id}).then(d=>{toast(d.message,'ok');vLeaves();});}
 
 function vDepts(){C().innerHTML=`<div class="box"><h4>Departments</h4>
   <div class="field"><label>Name</label><input id="dpName" placeholder="e.g. Accounts"></div>
