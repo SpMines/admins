@@ -340,7 +340,7 @@ const API = "https://script.google.com/a/macros/sphonda.in/s/AKfycbykAleApJW07z9
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
-const API_SET=API && API.indexOf("https://script.google.com/a/macros/sphonda.in/s/AKfycbykAleApJW07z9qG9eRgWgW-h7gtg85O-iJVgNgCMJsym5RfESPLbyddOxy6rbSp4E/exec")<0 && /^https:\/\/script\.google\.com\/macros\/s\//.test(API);
+const API_SET=API && API.indexOf("https://script.google.com/a/macros/sphonda.in/s/AKfycbykAleApJW07z9qG9eRgWgW-h7gtg85O-iJVgNgCMJsym5RfESPLbyddOxy6rbSp4E/exec")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
 
 let _busy=0;
 function showLoader(){_busy++;document.getElementById('faceLoader').classList.add('show');const t=document.getElementById('topload');t.classList.add('show');t.style.width='75%';}
