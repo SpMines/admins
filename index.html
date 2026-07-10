@@ -340,7 +340,7 @@ const API = "https://script.google.com/macros/s/AKfycbxTkO3vw7VSsK1p3-3jrZ1g1kxO
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
-const API_SET=API && API.indexOf("https://script.google.com/macros/s/AKfycbxTkO3vw7VSsK1p3-3jrZ1g1kxOmfIeT0KZRlKeUgnvq5olcxrrgP0m9iyPtRVx_WUq/exec")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
+const API_SET=API && API.indexOf("PASTE_GAS_URL")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
 
 let _busy=0;
 function showLoader(){_busy++;document.getElementById('faceLoader').classList.add('show');const t=document.getElementById('topload');t.classList.add('show');t.style.width='75%';}
