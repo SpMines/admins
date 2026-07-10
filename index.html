@@ -336,7 +336,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API = "https://script.google.com/macros/s/AKfycbxPp5kjOrhCqGnWd49sl-v16YREhBnwazyEbnPcTsMhR5J4YBtrthZeM3IqtBZvSS-2/exec";
+const API = "https://script.google.com/macros/s/AKfycbzxsp2pBExFNNoGqPTxtpTH_wRhGgcw9E2OzSfs7uVWfAglPK2e07yDDa9S6iIuMbFc/exec";
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
@@ -465,18 +465,114 @@ function submitComplete(id,n){const checklist=[];for(let ix=0;ix<n;ix++)checklis
     if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');nav('mytasks');});}
 
 let CK_DRAFT=[];
+
+// ==========================================
+// HELPER FUNCTIONS FOR TIME & NEXT DATE
+// ==========================================
+
+function calcNextDue(t) {
+  let d = new Date(); // Aaj ki date se start karega
+  let createdStr = String(t.CreatedAt || '').slice(0, 10);
+  let created = createdStr ? new Date(createdStr) : new Date();
+  
+  for (let i = 0; i < 366; i++) { // Agle 1 saal tak check karega
+    let ds = d.toLocaleDateString('en-CA'); 
+    let wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    
+    let dMid = new Date(ds + 'T00:00:00');
+    let cMid = new Date(createdStr + 'T00:00:00');
+    let daysSince = Math.floor((dMid - cMid) / 86400000);
+    
+    let f = t.Frequency, fd = String(t.FreqDetail || '');
+    let match = false;
+    
+    if (f === 'Once') match = (fd === ds);
+    else if (f === 'Daily') match = true;
+    else if (f === 'AlternateDay') match = (daysSince >= 0 && daysSince % 2 === 0);
+    else if (f === 'Weekly') match = (wd === fd);
+    else if (f === 'Fortnightly') match = (wd === fd && Math.floor(Math.max(daysSince, 0) / 7) % 2 === 0);
+    else {
+      let dom = d.getDate(), mon = d.getMonth() + 1;
+      if (f === 'Monthly') match = (dom === Number(fd));
+      else if (f === 'Quarterly') match = (dom === Number(fd) && [1, 4, 7, 10].indexOf(mon) >= 0);
+      else if (f === 'HalfYearly') match = (dom === Number(fd) && (mon === 1 || mon === 7));
+      else if (f === 'Yearly') {
+        let mstr = mon < 10 ? '0' + mon : mon;
+        let dstr = dom < 10 ? '0' + dom : dom;
+        match = (fd === mstr + '-' + dstr);
+      }
+    }
+    
+    if (match) { 
+      // 15 Aug 2026 format me return karega
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return 'N/A';
+}
+
+function formatTimeNicely(timeStr) {
+  let str = String(timeStr || '');
+  let m = str.match(/(\d{2}:\d{2})/); // HH:MM extract karega
+  if (!m) return str;
+  let parts = m[1].split(':');
+  let h = parseInt(parts[0], 10);
+  let min = parts[1];
+  let ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  h = h ? h : 12;
+  return (h < 10 ? '0'+h : h) + ':' + min + ' ' + ampm;
+}
+
+// ==========================================
+// MAIN TASKS RENDER FUNCTION
+// ==========================================
+
 function vTasks(){
-  C().innerHTML=`<div class="box"><h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task</button></h4><div id="tkList"></div></div>`;
-  Promise.all([api({action:'listTasks'}),api({action:'listEmployees'})]).then(([a,b])=>{
-    TASKS=a.tasks||[];EMPS=b.employees||[];
-    const el=document.getElementById('tkList');const act=TASKS.filter(t=>t.Active==='Yes');
-    if(!act.length){el.innerHTML='<div class="empty"><span class="ei">📋</span>No tasks yet. Spin up your first recurring task.</div>';return;}
-    el.innerHTML=act.map(t=>{const emp=EMPS.filter(e=>e.ID===t.AssigneeID)[0];
-      return `<div class="trow"><div>
-        <div class="tt">${esc(t.Title)} <span class="pri-${esc(t.Priority)}" style="font-size:11px">● ${esc(t.Priority)}</span></div>
-        <div class="ts">🔁 ${esc(t.Frequency)}${t.FreqDetail?' ('+esc(t.FreqDetail)+')':''} · 👤 ${esc(emp?emp.Name:'—')} · ⏱ ${esc(t.DueTime)}</div></div>
-        <div class="acts"><button class="btn ghost sm" onclick='openTaskForm(${JSON.stringify(t.ID)})'>Edit</button>
-        <button class="btn danger sm" onclick='delTask(${JSON.stringify(t.ID)})'>Off</button></div></div>`;}).join('');});}
+  C().innerHTML=`<div class="box">
+    <h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task</button></h4>
+    <div id="tkList"></div>
+  </div>`;
+  
+  Promise.all([api({action:'listTasks'}), api({action:'listEmployees'})]).then(([a,b])=>{
+    TASKS = a.tasks || []; 
+    EMPS = b.employees || [];
+    
+    const el = document.getElementById('tkList');
+    const act = TASKS.filter(t => t.Active === 'Yes');
+    
+    if(!act.length){
+      el.innerHTML='<div class="empty"><span class="ei">📋</span>No tasks yet. Spin up your first recurring task.</div>';
+      return;
+    }
+    
+    el.innerHTML = act.map(t => {
+      const emp = EMPS.filter(e => e.ID === t.AssigneeID)[0];
+      
+      // Naya logic yahan apply ho raha hai
+      let nextDate = calcNextDue(t);
+      let nicelyTime = formatTimeNicely(t.DueTime);
+      
+      return `<div class="trow">
+        <div>
+          <div class="tt">${esc(t.Title)} <span class="pri-${esc(t.Priority)}" style="font-size:11px">● ${esc(t.Priority)}</span></div>
+          <div class="ts" style="line-height:1.6">
+            🔁 ${esc(t.Frequency)}${t.FreqDetail ? ' ('+esc(t.FreqDetail)+')' : ''} · 
+            👤 ${esc(emp ? emp.Name : '—')} · 
+            ⏱ ${esc(nicelyTime)} <br> 
+            📅 Next Due: <b style="color:var(--ok)">${esc(nextDate)}</b>
+          </div>
+        </div>
+        <div class="acts">
+          <button class="btn ghost sm" onclick='openTaskForm(${JSON.stringify(t.ID)})'>Edit</button>
+          <button class="btn danger sm" onclick='delTask(${JSON.stringify(t.ID)})'>Off</button>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
 function freqDetailHint(f){return {Weekly:'Weekday (Mon…Sun)',Fortnightly:'Weekday (Mon…Sun)',Monthly:'Day of month (1–28)',Quarterly:'Day of month (1–28)',HalfYearly:'Day of month (1–28)',Yearly:'MM-DD (e.g. 03-31)',Once:'Date YYYY-MM-DD'}[f]||'Not needed';}
 function openTaskForm(id){const t=id?TASKS.filter(x=>x.ID===id)[0]:null;
   try{CK_DRAFT=t?JSON.parse(t.ChecklistJSON||'[]'):[];}catch(e){CK_DRAFT=[];}
