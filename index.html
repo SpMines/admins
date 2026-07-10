@@ -336,7 +336,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API = "https://script.google.com/macros/s/AKfycbxTkO3vw7VSsK1p3-3jrZ1g1kxOmfIeT0KZRlKeUgnvq5olcxrrgP0m9iyPtRVx_WUq/exec";
+const API = "https://script.google.com/macros/s/AKfycbzMhv8tpOnWbD7R5sJBn8tvw5CoipJEfyGnU61PzpZ8D2S_s-HeYXsVjIxTvmea0xPS/exec";
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
@@ -503,33 +503,48 @@ function saveTask(id){api({action:'saveTask',task:{ID:id||undefined,Title:val('t
   if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');vTasks();});}
 function delTask(id){modalConfirm({title:'Deactivate task?',message:'History stays. No new occurrences created.',danger:true,confirmText:'Deactivate',onConfirm:()=>api({action:'deleteTask',id:id}).then(d=>{toast(d.message,'ok');vTasks();})});}
 
-function vEmps(){C().innerHTML='<div class="box"><h4>Employees</h4><div id="emList"></div></div>';
+function vEmps(){C().innerHTML='<div class="box"><h4>Employees '+(lv()>=3?'<button class="btn sm" onclick="openEmpForm(null)">+ Add</button>':'')+'</h4><div id="emList"></div></div>';
   Promise.all([api({action:'listEmployees'}),api({action:'listDepts'})]).then(([a,b])=>{
     EMPS=a.employees||[];DEPTS=b.depts||[];const el=document.getElementById('emList');
     if(!EMPS.length){el.innerHTML='<div class="empty">No employees.</div>';return;}
     el.innerHTML=EMPS.map(e=>{const dp=DEPTS.filter(d=>d.ID===e.DepartmentID)[0];
       const acts=lv()>=3?`<button class="btn ghost sm" onclick='openEmpForm(${JSON.stringify(e.ID)})'>Edit</button>
+        <button class="btn ghost sm" onclick='openEmailForm(${JSON.stringify(e.ID)})'>✉️</button>
         ${e.Status==='Active'?`<button class="btn danger sm" onclick='empStatus(${JSON.stringify(e.ID)},"Disabled")'>Disable</button>`
         :e.Status==='Disabled'?`<button class="btn sm" onclick='empStatus(${JSON.stringify(e.ID)},"Active")'>Enable</button>`:''}`:'';
       return `<div class="trow"><div><div class="tt">${esc(e.Name)} <span style="font-size:11px;color:var(--muted)">${esc(e.Role)}</span></div>
         <div class="ts">${esc(e.Email)} · ${esc(dp?dp.Name:'No dept')} · Off: ${esc(e.WeeklyOff||'Sun')}</div></div>
         <div class="acts"><span class="badge bg-${e.Status==='Active'?'Done':e.Status==='Pending'?'Pending':'Overdue'}">${esc(e.Status)}</span>${acts}</div></div>`;}).join('');});}
-function openEmpForm(id){const e=EMPS.filter(x=>x.ID===id)[0];if(!e)return;
+function openEmpForm(id){const e=id?EMPS.filter(x=>x.ID===id)[0]:{Name:'',Phone:'',Role:'Employee',DepartmentID:'',Designation:'',WeeklyOff:'Sun'};if(id&&!e)return;
   const deptOpts='<option value="">—</option>'+DEPTS.map(d=>`<option value="${esc(d.ID)}" ${e.DepartmentID===d.ID?'selected':''}>${esc(d.Name)}</option>`).join('');
   const roles=['Employee','Manager','Owner','Super Admin'];const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const offs=String(e.WeeklyOff||'Sun').split(',').map(s=>s.trim());
-  openForm('Edit: '+e.Name,`
+  openForm(id?'Edit: '+e.Name:'Add Employee',`
     <div class="row2"><div class="field"><label>Name</label><input id="efName" value="${esc(e.Name)}"></div>
       <div class="field"><label>Phone</label><input id="efPhone" value="${esc(e.Phone)}"></div></div>
+    ${id?'':'<div class="field"><label>Email</label><input id="efEmail" type="email" placeholder="you@company.com"></div>'}
     <div class="row2"><div class="field"><label>Role</label><select id="efRole">${roles.map(r=>`<option ${e.Role===r?'selected':''}>${r}</option>`).join('')}</select></div>
       <div class="field"><label>Department</label><select id="efDept">${deptOpts}</select></div></div>
-    <div class="field"><label>Designation</label><input id="efDesig" value="${esc(e.Designation)}"></div>
+    <div class="field"><label>Designation</label><input id="efDesig" value="${esc(e.Designation)}" placeholder="e.g. Personal Coordinator"></div>
     <div class="field"><label>Weekly Off</label><div class="chiplist">${days.map(d=>`<label class="chip" style="cursor:pointer"><input type="checkbox" class="woDay" value="${d}" ${offs.indexOf(d)>=0?'checked':''} style="accent-color:var(--accent)"> ${d}</label>`).join('')}</div></div>
-    <div class="mc-actionbar"><button class="btn" onclick='saveEmp(${JSON.stringify(id)})'>Save</button></div>`);}
+    ${id?'':'<div class="ts" style="margin-bottom:6px">Temp password auto-generate hoga, email pe chala jayega.</div>'}
+    <div class="mc-actionbar"><button class="btn" onclick='saveEmp(${JSON.stringify(id||"")})'>Save</button></div>`);}
 function saveEmp(id){const off=[...document.querySelectorAll('.woDay:checked')].map(x=>x.value).join(',');
-  api({action:'saveEmployee',emp:{ID:id,Name:val('efName'),Phone:val('efPhone'),Role:val('efRole'),DepartmentID:val('efDept'),Designation:val('efDesig'),WeeklyOff:off}}).then(d=>{
+  const emp={ID:id||'',Name:val('efName'),Phone:val('efPhone'),Role:val('efRole'),DepartmentID:val('efDept'),Designation:val('efDesig'),WeeklyOff:off};
+  if(!id)emp.Email=val('efEmail');
+  api({action:'saveEmployee',emp:emp}).then(d=>{
     if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');vEmps();});}
 function empStatus(id,st){api({action:'setEmpStatus',id:id,status:st}).then(d=>{toast(d.message,'ok');vEmps();});}
+function openEmailForm(id){const e=EMPS.filter(x=>x.ID===id)[0];if(!e)return;
+  openForm('Email: '+e.Name,`
+    <div class="ts" style="margin-bottom:14px">${esc(e.Email)}</div>
+    <div class="field"><label>Subject</label><input id="emSub" placeholder="Subject"></div>
+    <div class="field"><label>Message</label><textarea id="emBody" placeholder="Message" style="min-height:110px"></textarea></div>
+    <div class="mc-actionbar"><button class="btn" onclick='sendEmpEmail(${JSON.stringify(id)})'>Send ✉️</button></div>`);}
+function sendEmpEmail(id){const sub=val('emSub'),msg=document.getElementById('emBody').value.trim();
+  if(!sub||!msg)return toast('Subject aur message required.','err');
+  api({action:'emailEmployee',id:id,subject:sub,message:msg}).then(d=>{
+    if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');});}
 
 function vHols(){C().innerHTML=`<div class="box"><h4>Holiday Calendar</h4>
   <div class="row2"><div class="field"><label>Date</label><input id="hDate" type="date"></div>
