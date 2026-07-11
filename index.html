@@ -268,7 +268,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
       <div id="fLogin">
         <div class="field"><label>Email</label><input id="liEmail" type="email" placeholder="you@company.com"></div>
         <div class="field"><label>Password</label><div class="pwrap"><input id="liPass" type="password" placeholder="••••••••"><span class="eye" onclick="eye('liPass',this)">👁</span></div></div>
-        <button class="btn" onclick="doLogin()">Sign In →</button>
+        <button class="btn" onclick="doLogin()">Sign In ⚡</button>
         <div class="link" onclick="authTab('forgot')">Forgot password?</div>
       </div>
       <div id="fSignup" class="hidden">
@@ -281,17 +281,17 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
           <div class="field"><label>Designation</label><input id="suDesig" placeholder="e.g. Sales Exec"></div>
           <div class="field"><label>Password</label><div class="pwrap"><input id="suPass" type="password" placeholder="6+ chars"><span class="eye" onclick="eye('suPass',this)">👁</span></div></div>
         </div>
-        <button class="btn" onclick="doSignup()">Create Account →</button>
+        <button class="btn" onclick="doSignup()">Create Account 🚀</button>
         <div class="link" style="color:var(--muted);cursor:default">First account = Super Admin. Others need approval.</div>
       </div>
       <div id="fForgot" class="hidden">
         <div class="field"><label>Email</label><input id="fgEmail" type="email" placeholder="you@company.com"></div>
-        <button class="btn ghost" onclick="doOtp()" style="margin-bottom:12px">Send OTP</button>
+        <button class="btn ghost" onclick="doOtp()" style="margin-bottom:12px">Send OTP 📩</button>
         <div class="row2">
           <div class="field"><label>OTP</label><input id="fgOtp" placeholder="6-digit"></div>
           <div class="field"><label>New Password</label><div class="pwrap"><input id="fgPass" type="password" placeholder="6+ chars"><span class="eye" onclick="eye('fgPass',this)">👁</span></div></div>
         </div>
-        <button class="btn" onclick="doReset()">Reset Password</button>
+        <button class="btn" onclick="doReset()">Reset Password 🔑</button>
         <div class="link" onclick="authTab('login')">← Back to sign in</div>
       </div>
     </div>
@@ -306,12 +306,12 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
       <div class="uchip">
         <div style="text-align:right"><div class="un" id="uName"></div><div class="ur" id="uRole"></div></div>
         <div class="av" id="uAv"></div>
-        <button class="btn ghost sm" onclick="doLogout()">Sign Out</button>
+        <button class="btn ghost sm" onclick="doLogout()">Sign Out 👋</button>
       </div>
     </div>
     <div class="nav" id="mainNav"></div>
     <div class="content" id="content"></div>
-    <div class="appfoot">SP Mines · Operations Management System · v2.1.0</div>
+    <div class="appfoot">SP Mines · Operations Management System · v2.2.0</div>
   </div>
 </div>
 
@@ -340,7 +340,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycbziDqiJrWkwka76wtRx7ArBpbi6pc-FHfmNxaeOQjRQ5b0kq5KpKlLuN3kXcs8Vyb1P/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbxP52dfFrZfAk1mP4wojHeVBNT92vadmXwXguK8PNn1efUl8JN3aRyaddt7lf9Hep-K/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
@@ -351,12 +351,12 @@ let API_SET=apiOk(API);
 let _busy=0;
 function showLoader(){_busy++;document.getElementById('faceLoader').classList.add('show');const t=document.getElementById('topload');t.classList.add('show');t.style.width='75%';}
 function hideLoader(){_busy=Math.max(0,_busy-1);if(_busy===0){document.getElementById('faceLoader').classList.remove('show');const t=document.getElementById('topload');t.style.width='100%';setTimeout(()=>{t.classList.remove('show');t.style.width='0';},250);}}
-function guard(){if(!API_SET){modalConfirm({title:"Backend not connected",message:"GAS /exec URL set karo — file edit/push ki zaroorat nahi.",icon:"🔌",confirmText:"Set URL",onConfirm:apiUrlPrompt});return false;}return true;}
+function guard(){if(!API_SET){modalConfirm({title:"Backend not connected",message:"Set your GAS /exec URL here — zero file edits needed.",icon:"🔌",confirmText:"Set URL",onConfirm:apiUrlPrompt});return false;}return true;}
 function apiUrlPrompt(){openForm('Backend URL (GAS /exec)',`
-  <div class="ts" style="margin-bottom:12px;line-height:1.6">⚠️ <b style="color:var(--txt)">Golden rule:</b> code update pe <b style="color:var(--txt)">Manage deployments → ✏️ → New version</b>. "New deployment" har baar NAYA URL banata hai — isi se baar baar tootta hai.</div>
-  <div class="field"><label>GAS Web App URL (/exec tak poora)</label><input id="apiIn" value="${esc(API)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+  <div class="ts" style="margin-bottom:12px;line-height:1.6">⚠️ <b style="color:var(--txt)">Golden rule:</b> for code updates use <b style="color:var(--txt)">Manage deployments → ✏️ → New version</b>. "New deployment" mints a NEW URL every time — that is why it keeps breaking.</div>
+  <div class="field"><label>GAS Web App URL (full /exec)</label><input id="apiIn" value="${esc(API)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
   <div class="mc-actionbar"><button class="btn" onclick="saveApiUrl()">Save &amp; Reload</button></div>`);}
-function saveApiUrl(){const u=val('apiIn');if(!apiOk(u))return toast('URL format galat. /exec tak poora paste karo.','err');try{localStorage.setItem('spm_api',u)}catch(e){}location.reload();}
+function saveApiUrl(){const u=val('apiIn');if(!apiOk(u))return toast('Invalid URL. Paste the full /exec link.','err');try{localStorage.setItem('spm_api',u)}catch(e){}location.reload();}
 function api(p){if(!guard())return Promise.reject(new Error('noapi'));showLoader();p.token=tGet();
   return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
     .then(r=>r.json()).then(d=>{hideLoader();
@@ -423,7 +423,7 @@ function showCfg(){const b=document.getElementById('cfgbar');b.className='cfgbar
   b.innerHTML='✅ Connected to Google Sheets · <b>SP Mines OMS v2.0.0</b>';
   setTimeout(()=>{b.style.transition='.4s';b.style.opacity='0';b.style.padding='0';b.style.height='0';b.style.overflow='hidden';},2600);}
 function buildNav(){
-  const tabs=[['dash','Dashboard'],['mytasks','My Tasks']];
+  const tabs=[['dash','Dashboard'],['mytasks','For PC']];
   if(lv()>=2){tabs.push(['tasks','Tasks'],['team','Team Work'],['reports','Reports'],['emps','Employees'],['hols','Holidays'],['leaves','Leaves']);}
   if(lv()>=3){tabs.push(['depts','Departments'],['admin','Admin']);}
   document.getElementById('mainNav').innerHTML=tabs.map(t=>`<button id="nav_${t[0]}" onclick="nav('${t[0]}')">${t[1]}</button>`).join('');}
@@ -452,7 +452,7 @@ function renderInstList(elId,list,canComplete){
     if(i.Deferred)chips.push(`<span class="badge bg-Deferred" title="Original ${esc(i.Deferred)}">⏭ Deferred · ${esc(i.Deferred)}</span>`);
     if(!i.Deferred&&st!=='Done'&&i.OrigDate&&String(i.DueDate)>String(i.OrigDate))chips.push(`<span class="badge bg-Overdue" title="Original due ${esc(i.OrigDate)}">↻ Carried · since ${esc(i.OrigDate)}</span>`);
     chips.push(`<span class="pri-${esc(i.Priority)}" style="font-size:11px;font-weight:600">● ${esc(i.Priority)}</span>`);
-    const btn=(canComplete&&st!=='Done'&&(i.AssigneeID===ME.ID||lv()>=2))?`<button class="btn sm" onclick='openComplete(${JSON.stringify(i.ID)})'>Complete</button>`:'';
+    const btn=(canComplete&&st!=='Done'&&(i.AssigneeID===ME.ID||lv()>=2))?`<button class="btn sm" onclick='openComplete(${JSON.stringify(i.ID)})'>Done ✅</button>`:'';
     const ic=st==='Done'?'✅':st==='Overdue'?'⚠️':'📋';
     return `<div class="fcard s-${st}"><div class="ic">${ic}</div>
       <div class="body"><div class="nm">${esc(i.Title)}</div>
@@ -460,7 +460,7 @@ function renderInstList(elId,list,canComplete){
         <div class="chips">${chips.join('')}</div></div>
       <div class="right"><span class="badge bg-${st}">${st}</span>${btn}</div></div>`;}).join('');}
 let INST_CACHE=[];
-function vMyTasks(){C().innerHTML='<div class="box"><h4>My Tasks</h4><div id="miList"></div></div>';
+function vMyTasks(){C().innerHTML='<div class="box"><h4>For PC 📞 — assigned to me</h4><div id="miList"></div></div>';
   api({action:'myInstances'}).then(d=>{INST_CACHE=d.instances||[];renderInstList('miList',INST_CACHE,true);});}
 let TEAM_F='today';
 function vTeam(){C().innerHTML=`<div class="box"><h4>Team Work</h4>
@@ -486,14 +486,14 @@ function openComplete(id){const i=INST_CACHE.filter(x=>x.ID===id)[0];if(!i)retur
     ${i.Deferred?`<div class="badge bg-Deferred" style="margin-bottom:12px">⏭ Deferred from Off-day · Original ${esc(i.Deferred)}</div>`:''}
     ${ckHtml}
     <div class="field" style="margin-top:12px"><label>Remarks / Evidence</label><textarea id="cpRemarks" placeholder="What was done, references, proof…"></textarea></div>
-    <div class="mc-actionbar"><button class="btn" onclick='submitComplete(${JSON.stringify(id)},${ck.length})'>Mark Complete ✓</button></div>`);}
+    <div class="mc-actionbar"><button class="btn" onclick='submitComplete(${JSON.stringify(id)},${ck.length})'>Mark Done ✅</button></div>`);}
 function submitComplete(id,n){const checklist=[];for(let ix=0;ix<n;ix++)checklist.push({done:document.getElementById('ck_'+ix).checked});
   api({action:'completeInstance',id:id,checklist:checklist,remarks:document.getElementById('cpRemarks').value.trim()}).then(d=>{
     if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');nav('mytasks');});}
 
 let CK_DRAFT=[];
 function vTasks(){
-  C().innerHTML=`<div class="box"><h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task</button></h4><div id="tkList"></div></div>`;
+  C().innerHTML=`<div class="box"><h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task ⚡</button></h4><div id="tkList"></div></div>`;
   Promise.all([api({action:'listTasks'}),api({action:'listEmployees'})]).then(([a,b])=>{
     TASKS=a.tasks||[];EMPS=b.employees||[];
     const el=document.getElementById('tkList');const act=TASKS.filter(t=>t.Active==='Yes');
@@ -522,7 +522,7 @@ function openTaskForm(id){const t=id?TASKS.filter(x=>x.ID===id)[0]:null;
     <div class="field"><label>Checklist Items</label><div class="chiplist" id="ckChips"></div>
       <div style="display:flex;gap:8px"><input id="ckNew" placeholder="Add item…" style="flex:1;padding:11px 13px;border-radius:11px;background:var(--inp);border:1px solid var(--brd);color:var(--txt);font-size:16px;outline:none;font-family:'Jost'"><button class="btn sm" onclick="addCk()">Add</button></div></div>
     <label class="ck" style="margin-bottom:14px"><input type="checkbox" id="tfEv" ${t&&t.EvidenceRequired==='Yes'?'checked':''}> Evidence / remarks mandatory on completion</label>
-    <div class="mc-actionbar"><button class="btn" onclick='saveTask(${JSON.stringify(id||"")})'>Save Task</button></div>`);
+    <div class="mc-actionbar"><button class="btn" onclick='saveTask(${JSON.stringify(id||"")})'>Save Task 💾</button></div>`);
   drawCk();}
 function drawCk(){document.getElementById('ckChips').innerHTML=CK_DRAFT.map((c,i)=>`<span class="chip">${esc(c)} <b onclick="CK_DRAFT.splice(${i},1);drawCk()">✕</b></span>`).join('');}
 function addCk(){const v=document.getElementById('ckNew').value.trim();if(!v)return;CK_DRAFT.push(v);document.getElementById('ckNew').value='';drawCk();}
@@ -634,7 +634,7 @@ function vReports(){
       <div class="field"><label>To</label><input id="rpTo" type="date"></div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn sm" onclick="runReport()">Run Report</button>
+      <button class="btn sm" onclick="runReport()">Run Report 📊</button>
       <button class="btn ghost sm" onclick="repCsv()">⬇ Export CSV</button>
     </div>
   </div><div id="rpOut"></div>`;
@@ -651,7 +651,7 @@ function runReport(){
   api({action:'report',employeeId:val('rpEmp'),from:val('rpFrom'),to:val('rpTo')}).then(d=>{
     if(!d.ok)return toast(d.message||'Report failed','err');
     REP_DATA=d;const out=document.getElementById('rpOut');
-    if(!d.report.length){out.innerHTML='<div class="box"><div class="empty"><span class="ei">📊</span>Is range me koi task instance nahi mila.</div></div>';return;}
+    if(!d.report.length){out.innerHTML='<div class="box"><div class="empty"><span class="ei">📊</span>No task instances in this range. Try a wider date window.</div></div>';return;}
     out.innerHTML=d.report.map(r=>{
       const s=r.summary;
       const leaveHtml=r.leaves.length?`<div class="ts" style="margin:6px 0 10px">🏖 Leaves: ${r.leaves.map(l=>esc(l.From)+(l.To!==l.From?' → '+esc(l.To):'')+' ('+esc(l.Reason)+')').join(' · ')}</div>`:'';
@@ -669,7 +669,7 @@ function runReport(){
           <div class="stat"><div class="n">${s.pending}</div><div class="l">Pending</div><div class="bar" style="background:var(--accent2)"></div></div>
         </div>${leaveHtml}${rows}</div>`;}).join('');});}
 function repCsv(){
-  if(!REP_DATA||!REP_DATA.report.length)return toast('Pehle Run Report dabao.','err');
+  if(!REP_DATA||!REP_DATA.report.length)return toast('Run the report first.','err');
   let csv='Employee,Role,Dept,Task,Date,DueTime,Priority,Verdict,CompletedAt,LeaveReason,Remarks\n';
   REP_DATA.report.forEach(r=>r.rows.forEach(x=>{
     csv+=[r.emp.Name,r.emp.Role,r.emp.Dept,x.Title,x.OrigDate,x.DueTime,x.Priority,x.Verdict,x.CompletedAt,x.LeaveReason,x.Remarks]
@@ -699,12 +699,12 @@ function openApprove(id){const e=EMPS.filter(x=>x.ID===id)[0];
   openForm('Approve: '+e.Name,`<div class="ts" style="margin-bottom:14px">${esc(e.Email)} · ${esc(e.Designation||'—')}</div>
     <div class="row2"><div class="field"><label>Role</label><select id="apRole">${['Employee','Manager','Owner'].map(r=>`<option>${r}</option>`).join('')}</select></div>
       <div class="field"><label>Department</label><select id="apDept">${deptOpts}</select></div></div>
-    <div class="mc-actionbar"><button class="btn" onclick='doApprove(${JSON.stringify(id)})'>Approve &amp; Notify</button></div>`);}
+    <div class="mc-actionbar"><button class="btn" onclick='doApprove(${JSON.stringify(id)})'>Approve ✅</button></div>`);}
 function doApprove(id){api({action:'approveEmployee',id:id,role:val('apRole'),departmentId:val('apDept')}).then(d=>{
   if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');aApprovals();});}
 let BRAIN=[];
 function aBrain(){AB().innerHTML=`<div class="box"><h4>SAM Brain <button class="btn sm" onclick="openBrainForm()">+ Teach SAM</button></h4>
-  <div class="ts" style="margin-bottom:12px">Har entry = ek cheez jo SAM jaanta hai. 👍/👎 aur usage ranking tune karte hain.</div><div id="brList"></div></div>`;
+  <div class="ts" style="margin-bottom:12px">Every entry = one thing SAM knows. 👍/👎 + usage auto-tune the ranking.</div><div id="brList"></div></div>`;
   api({action:'brainList'}).then(d=>{BRAIN=d.brain||[];
     document.getElementById('brList').innerHTML=BRAIN.length?BRAIN.map(b=>`<div class="trow"><div>
       <div class="tt">${esc(b.Question||'(keywords only)')}</div>
@@ -716,7 +716,7 @@ function aBrain(){AB().innerHTML=`<div class="box"><h4>SAM Brain <button class="
 function openBrainForm(id){const b=id?BRAIN.filter(x=>x.ID===id)[0]:null;
   openForm(b?'Edit Brain Entry':'Teach SAM',`
     <div class="field"><label>Question (example phrasing)</label><input id="brQ" value="${b?esc(b.Question):''}" placeholder="e.g. How do I claim travel expense?"></div>
-    <div class="field"><label>Keywords (comma sep — Hinglish daalo!)</label><input id="brK" value="${b?esc(b.Keywords):''}" placeholder="travel,expense,claim,kharcha,bill"></div>
+    <div class="field"><label>Keywords (comma separated — Hinglish works too!)</label><input id="brK" value="${b?esc(b.Keywords):''}" placeholder="travel,expense,claim,kharcha,bill"></div>
     <div class="field"><label>Answer</label><textarea id="brA" placeholder="Exact answer SAM should give">${b?esc(b.Answer):''}</textarea></div>
     <div class="mc-actionbar"><button class="btn" onclick='saveBrain(${JSON.stringify(id||"")})'>Save to Brain 🧠</button></div>`);}
 function saveBrain(id){api({action:'brainSave',entry:{ID:id||undefined,Question:val('brQ'),Keywords:val('brK'),Answer:document.getElementById('brA').value.trim()}}).then(d=>{
@@ -724,7 +724,7 @@ function saveBrain(id){api({action:'brainSave',entry:{ID:id||undefined,Question:
 function delBrain(id){api({action:'brainDelete',id:id}).then(d=>{toast(d.message,'ok');aBrain();});}
 let UNK=[];
 function aUnknown(){AB().innerHTML=`<div class="box"><h4>SAM Learning Queue</h4>
-  <div class="ts" style="margin-bottom:12px">Jo SAM nahi jaanta. Train karo → agli baar answer. Zyada count = pehle train.</div><div id="uqList"></div></div>`;
+  <div class="ts" style="margin-bottom:12px">Stuff SAM could not answer yet. Train it once → answered forever. Higher count = train first.</div><div id="uqList"></div></div>`;
   api({action:'unknownList'}).then(d=>{UNK=(d.unknown||[]).filter(u=>u.Status==='Open').sort((a,b)=>Number(b.Count||0)-Number(a.Count||0));
     document.getElementById('uqList').innerHTML=UNK.length?UNK.map(u=>`<div class="trow"><div><div class="tt">"${esc(u.Query)}"</div><div class="ts">Asked ${esc(u.Count)}× · last ${esc(u.LastAsked)}</div></div>
       <div class="acts"><button class="btn sm" onclick='openTrain(${JSON.stringify(u.ID)})'>Train</button></div></div>`).join('')
@@ -743,12 +743,12 @@ function aAudit(){AB().innerHTML='<div class="box"><h4>Audit Log — latest 300<
 let chatOpen=false;
 function toggleChat(){chatOpen=!chatOpen;document.getElementById('chatp').classList.toggle('show',chatOpen);
   if(chatOpen&&!document.getElementById('chatm').children.length)
-    botSay("Namaste "+(ME?ME.Name.split(' ')[0]:'')+"! 👋 Main SAM. Tasks, holidays, team — kuch bhi pucho. Jo nahi aata, wo main seekh leta hun.");}
+    botSay("Hey "+(ME?ME.Name.split(' ')[0]:'')+"! 👋 I'm SAM. Tasks, holidays, your team — ask me anything. What I don't know yet, I learn. That's the deal. 🤝");}
 function quickAsk(q){document.getElementById('chatIn').value=q;sendChat();}
 function sendChat(){const inp=document.getElementById('chatIn');const q=inp.value.trim();if(!q)return;
   inp.value='';userSay(q);const typing=botSay('…');
   apiS({action:'chat',message:q}).then(d=>{typing.remove();
-    if(!d.ok){botSay(API_SET?'Something went wrong. Try again.':'Backend connect nahi hai. index.html me GAS URL daalo.');return;}
+    if(!d.ok){botSay(API_SET?'Something went wrong. Try again.':'Backend not connected. Set the GAS URL first.');return;}
     const m=botSay(d.reply);
     if(d.source==='brain'&&d.brainId){const fb=document.createElement('div');fb.className='fb';
       fb.innerHTML='<span title="Helpful">👍</span><span title="Wrong">👎</span>';
@@ -765,12 +765,12 @@ function push_(m){const c=document.getElementById('chatm');c.appendChild(m);c.sc
   bar.style.position='fixed';bar.style.top='0';bar.style.left='0';bar.style.right='0';bar.style.zIndex='6';
   function show(ok,msg,withSet){bar.className='cfgbar'+(ok?' ok':'');bar.innerHTML=msg+(withSet?' &nbsp;<a onclick="apiUrlPrompt()">Set URL</a>':'');if(!bar.parentNode)document.body.appendChild(bar);}
   function hide(){if(bar.parentNode)bar.parentNode.removeChild(bar);}
-  if(!API_SET){show(false,'🔌 <b>Backend not connected.</b> GAS URL yahin set karo — file push ki zaroorat nahi.',true);return;}
+  if(!API_SET){show(false,'🔌 <b>Backend not connected.</b> Set your GAS URL right here — no push needed.',true);return;}
   fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'__ping'})})
     .then(r=>r.json())
     .then(()=>{show(true,'✅ Backend connected · SP Mines OMS');setTimeout(hide,2500);
       if(tGet())api({action:'me'}).then(d=>{if(d.ok){ME=d.me;enterApp();}else{tClr();}}).catch(()=>{});})
-    .catch(()=>{show(false,'⚠️ <b>Backend respond nahi kar raha.</b> Naya deployment banaya? URL badla hoga — yahin update karo.',true);});
+    .catch(()=>{show(false,'⚠️ <b>Backend not responding.</b> Made a new deployment? URL changed — update it here.',true);});
 })();
 </script>
 </body>
