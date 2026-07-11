@@ -105,6 +105,10 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh;letter-spacing:.1px
 .bg-Done{background:rgba(55,211,153,.14);color:#7fe9c0;border:1px solid rgba(55,211,153,.36)}
 .bg-Overdue{background:rgba(255,93,108,.14);color:#ff97a2;border:1px solid rgba(255,93,108,.36)}
 .bg-Deferred{background:rgba(108,92,231,.16);color:#c9bdff;border:1px solid rgba(108,92,231,.36)}
+.bg-OnTime{background:rgba(55,211,153,.14);color:#7fe9c0;border:1px solid rgba(55,211,153,.36)}
+.bg-Late{background:rgba(255,181,71,.14);color:#ffd591;border:1px solid rgba(255,181,71,.36)}
+.bg-Missed{background:rgba(255,93,108,.14);color:#ff97a2;border:1px solid rgba(255,93,108,.36)}
+.bg-Leave{background:rgba(90,169,255,.14);color:#9fd0ff;border:1px solid rgba(90,169,255,.36)}
 .pri-High{color:#ff97a2}.pri-Medium{color:#ffc875}.pri-Low{color:#8fd0ff}
 .nav{display:flex;gap:8px;padding:14px 20px;overflow-x:auto;border-bottom:1px solid var(--brd);scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
@@ -336,7 +340,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycbywZvOkx3KJ-Fo2B9orw7HlApsLx7_DKIRNt68NzIZA1KzSiORh1BkmpG3bOhCEfvNa/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbwR64dPhyLsceihBHQ3Ct9yJfm-dq3H7ZIajExHBNq_w02pMPPCsF6djnKQDyUHkD5b/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
@@ -420,13 +424,13 @@ function showCfg(){const b=document.getElementById('cfgbar');b.className='cfgbar
   setTimeout(()=>{b.style.transition='.4s';b.style.opacity='0';b.style.padding='0';b.style.height='0';b.style.overflow='hidden';},2600);}
 function buildNav(){
   const tabs=[['dash','Dashboard'],['mytasks','My Tasks']];
-  if(lv()>=2){tabs.push(['tasks','Tasks'],['team','Team Work'],['emps','Employees'],['hols','Holidays'],['leaves','Leaves']);}
+  if(lv()>=2){tabs.push(['tasks','Tasks'],['team','Team Work'],['reports','Reports'],['emps','Employees'],['hols','Holidays'],['leaves','Leaves']);}
   if(lv()>=3){tabs.push(['depts','Departments'],['admin','Admin']);}
   document.getElementById('mainNav').innerHTML=tabs.map(t=>`<button id="nav_${t[0]}" onclick="nav('${t[0]}')">${t[1]}</button>`).join('');}
 function nav(t){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('nav_'+t);if(b)b.classList.add('active');
-  ({dash:vDash,mytasks:vMyTasks,tasks:vTasks,team:vTeam,emps:vEmps,hols:vHols,leaves:vLeaves,depts:vDepts,admin:vAdmin})[t]();}
+  ({dash:vDash,mytasks:vMyTasks,tasks:vTasks,team:vTeam,reports:vReports,emps:vEmps,hols:vHols,leaves:vLeaves,depts:vDepts,admin:vAdmin})[t]();}
 const C=()=>document.getElementById('content');
 
 function vDash(){api({action:'dashboard'}).then(d=>{const s=d.stats;
@@ -612,6 +616,67 @@ function vDepts(){C().innerHTML=`<div class="box"><h4>Departments</h4>
       :'<div class="empty">No departments yet.</div>';});}
 function saveDept(){api({action:'saveDept',dept:{Name:val('dpName')}}).then(d=>{if(!d.ok)return toast(d.message,'err');toast(d.message,'ok');vDepts();});}
 function delDept(id){modalConfirm({title:'Delete department?',message:'Employees in it show "No dept".',danger:true,confirmText:'Delete',onConfirm:()=>api({action:'deleteDept',id:id}).then(d=>{toast(d.message,'ok');vDepts();})});}
+
+/* ---- reports ---- */
+let REP_DATA=null;
+function vReports(){
+  const t=today();
+  C().innerHTML=`<div class="box"><h4>Employee Performance Report</h4>
+    <div class="row2">
+      <div class="field"><label>Employee</label><select id="rpEmp"><option value="">All Employees</option></select></div>
+      <div class="field"><label>&nbsp;</label><div class="chatq" style="padding:0">
+        <button onclick="rpQuick(7)">Last 7 days</button>
+        <button onclick="rpQuick(30)">Last 30 days</button>
+        <button onclick="rpQuick(0)">This month</button></div></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>From</label><input id="rpFrom" type="date"></div>
+      <div class="field"><label>To</label><input id="rpTo" type="date"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn sm" onclick="runReport()">Run Report</button>
+      <button class="btn ghost sm" onclick="repCsv()">⬇ Export CSV</button>
+    </div>
+  </div><div id="rpOut"></div>`;
+  document.getElementById('rpTo').value=t;
+  document.getElementById('rpFrom').value=dShift(t,-6);
+  api({action:'listEmployees'}).then(d=>{EMPS=d.employees||[];
+    document.getElementById('rpEmp').innerHTML='<option value="">All Employees</option>'+EMPS.filter(e=>e.Status!=='Pending').map(e=>`<option value="${esc(e.ID)}">${esc(e.Name)}</option>`).join('');});}
+function dShift(ds,n){const d=new Date(ds+'T00:00:00');d.setDate(d.getDate()+n);return d.toLocaleDateString('en-CA');}
+function rpQuick(n){const t=today();
+  if(n===0){document.getElementById('rpFrom').value=t.slice(0,8)+'01';}
+  else{document.getElementById('rpFrom').value=dShift(t,-(n-1));}
+  document.getElementById('rpTo').value=t;runReport();}
+function runReport(){
+  api({action:'report',employeeId:val('rpEmp'),from:val('rpFrom'),to:val('rpTo')}).then(d=>{
+    if(!d.ok)return toast(d.message||'Report failed','err');
+    REP_DATA=d;const out=document.getElementById('rpOut');
+    if(!d.report.length){out.innerHTML='<div class="box"><div class="empty"><span class="ei">📊</span>Is range me koi task instance nahi mila.</div></div>';return;}
+    out.innerHTML=d.report.map(r=>{
+      const s=r.summary;
+      const leaveHtml=r.leaves.length?`<div class="ts" style="margin:6px 0 10px">🏖 Leaves: ${r.leaves.map(l=>esc(l.From)+(l.To!==l.From?' → '+esc(l.To):'')+' ('+esc(l.Reason)+')').join(' · ')}</div>`:'';
+      const rows=r.rows.map(x=>`<div class="trow"><div>
+          <div class="tt">${esc(x.Title)} <span class="pri-${esc(x.Priority)}" style="font-size:11px">● ${esc(x.Priority)}</span></div>
+          <div class="ts">📅 ${esc(x.OrigDate)} ${esc(x.DueTime)}${x.CompletedAt?' · ✓ '+esc(x.CompletedAt):''}${x.Remarks?' · 📝 '+esc(String(x.Remarks).slice(0,60)):''}</div></div>
+          <div class="acts"><span class="badge bg-${esc(x.Verdict)}">${x.Verdict==='OnTime'?'On Time':x.Verdict}</span>${x.LeaveReason?`<span class="badge bg-Leave">${esc(x.LeaveReason)}</span>`:''}</div></div>`).join('');
+      return `<div class="box">
+        <h4>${esc(r.emp.Name)} <span style="font-size:12px;color:var(--muted);font-weight:400">${esc(r.emp.Role)}${r.emp.Dept?' · '+esc(r.emp.Dept):''}</span></h4>
+        <div class="cards" style="margin-bottom:10px">
+          <div class="stat"><div class="n">${s.onTimePct}%</div><div class="l">On-Time Rate</div><div class="bar" style="background:var(--grad)"></div></div>
+          <div class="stat"><div class="n" style="color:#7fe9c0">${s.onTime}</div><div class="l">On Time</div><div class="bar" style="background:var(--ok)"></div></div>
+          <div class="stat"><div class="n" style="color:#ffd591">${s.late}</div><div class="l">Late Done</div><div class="bar" style="background:var(--warn)"></div></div>
+          <div class="stat"><div class="n" style="color:#ff97a2">${s.missed}</div><div class="l">Missed</div><div class="bar" style="background:var(--err)"></div></div>
+          <div class="stat"><div class="n">${s.pending}</div><div class="l">Pending</div><div class="bar" style="background:var(--accent2)"></div></div>
+        </div>${leaveHtml}${rows}</div>`;}).join('');});}
+function repCsv(){
+  if(!REP_DATA||!REP_DATA.report.length)return toast('Pehle Run Report dabao.','err');
+  let csv='Employee,Role,Dept,Task,Date,DueTime,Priority,Verdict,CompletedAt,LeaveReason,Remarks\n';
+  REP_DATA.report.forEach(r=>r.rows.forEach(x=>{
+    csv+=[r.emp.Name,r.emp.Role,r.emp.Dept,x.Title,x.OrigDate,x.DueTime,x.Priority,x.Verdict,x.CompletedAt,x.LeaveReason,x.Remarks]
+      .map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')+'\n';}));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='SP_Mines_Report_'+REP_DATA.from+'_to_'+REP_DATA.to+'.csv';a.click();}
 
 let ADMIN_TAB='approvals';
 function vAdmin(){C().innerHTML=`<div class="nav" style="border-bottom:none;padding:0 0 14px">
