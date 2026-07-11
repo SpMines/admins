@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SP Mines - OMS Dashboard</title>
+<title>SP Mines OMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -311,7 +311,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="nav" id="mainNav"></div>
     <div class="content" id="content"></div>
-    <div class="appfoot">SP Mines · Operations Management System · v2.0.0</div>
+    <div class="appfoot">SP Mines · Operations Management System · v2.1.0</div>
   </div>
 </div>
 
@@ -340,7 +340,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycbwR64dPhyLsceihBHQ3Ct9yJfm-dq3H7ZIajExHBNq_w02pMPPCsF6djnKQDyUHkD5b/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbziDqiJrWkwka76wtRx7ArBpbi6pc-FHfmNxaeOQjRQ5b0kq5KpKlLuN3kXcs8Vyb1P/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
