@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SP Mines - OMS Sheet</title>
+<title>SP Mines OMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -336,16 +336,23 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API = "https://script.google.com/macros/s/AKfycbzxsp2pBExFNNoGqPTxtpTH_wRhGgcw9E2OzSfs7uVWfAglPK2e07yDDa9S6iIuMbFc/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbywZvOkx3KJ-Fo2B9orw7HlApsLx7_DKIRNt68NzIZA1KzSiORh1BkmpG3bOhCEfvNa/exec";
+let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
 const DEVICE=(navigator.userAgent||"Unknown")+" | "+(navigator.platform||"");
-const API_SET=API && API.indexOf("PASTE_GAS_URL")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\//.test(API);
+function apiOk(u){return !!u && u.indexOf("PASTE_GAS_URL")<0 && /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/.+\/exec$/.test(u);}
+let API_SET=apiOk(API);
 
 let _busy=0;
 function showLoader(){_busy++;document.getElementById('faceLoader').classList.add('show');const t=document.getElementById('topload');t.classList.add('show');t.style.width='75%';}
 function hideLoader(){_busy=Math.max(0,_busy-1);if(_busy===0){document.getElementById('faceLoader').classList.remove('show');const t=document.getElementById('topload');t.style.width='100%';setTimeout(()=>{t.classList.remove('show');t.style.width='0';},250);}}
-function guard(){if(!API_SET){modalAlert("GAS URL abhi set nahi hai. index.html me API constant me apna /exec URL paste karo, phir dobara host karo.","Backend not connected","🔌");return false;}return true;}
+function guard(){if(!API_SET){modalConfirm({title:"Backend not connected",message:"GAS /exec URL set karo — file edit/push ki zaroorat nahi.",icon:"🔌",confirmText:"Set URL",onConfirm:apiUrlPrompt});return false;}return true;}
+function apiUrlPrompt(){openForm('Backend URL (GAS /exec)',`
+  <div class="ts" style="margin-bottom:12px;line-height:1.6">⚠️ <b style="color:var(--txt)">Golden rule:</b> code update pe <b style="color:var(--txt)">Manage deployments → ✏️ → New version</b>. "New deployment" har baar NAYA URL banata hai — isi se baar baar tootta hai.</div>
+  <div class="field"><label>GAS Web App URL (/exec tak poora)</label><input id="apiIn" value="${esc(API)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+  <div class="mc-actionbar"><button class="btn" onclick="saveApiUrl()">Save &amp; Reload</button></div>`);}
+function saveApiUrl(){const u=val('apiIn');if(!apiOk(u))return toast('URL format galat. /exec tak poora paste karo.','err');try{localStorage.setItem('spm_api',u)}catch(e){}location.reload();}
 function api(p){if(!guard())return Promise.reject(new Error('noapi'));showLoader();p.token=tGet();
   return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
     .then(r=>r.json()).then(d=>{hideLoader();
@@ -439,6 +446,7 @@ function renderInstList(elId,list,canComplete){
     const st=i.LiveStatus||i.Status;
     const chips=[];
     if(i.Deferred)chips.push(`<span class="badge bg-Deferred" title="Original ${esc(i.Deferred)}">⏭ Deferred · ${esc(i.Deferred)}</span>`);
+    if(!i.Deferred&&st!=='Done'&&i.OrigDate&&String(i.DueDate)>String(i.OrigDate))chips.push(`<span class="badge bg-Overdue" title="Original due ${esc(i.OrigDate)}">↻ Carried · since ${esc(i.OrigDate)}</span>`);
     chips.push(`<span class="pri-${esc(i.Priority)}" style="font-size:11px;font-weight:600">● ${esc(i.Priority)}</span>`);
     const btn=(canComplete&&st!=='Done'&&(i.AssigneeID===ME.ID||lv()>=2))?`<button class="btn sm" onclick='openComplete(${JSON.stringify(i.ID)})'>Complete</button>`:'';
     const ic=st==='Done'?'✅':st==='Overdue'?'⚠️':'📋';
@@ -450,8 +458,23 @@ function renderInstList(elId,list,canComplete){
 let INST_CACHE=[];
 function vMyTasks(){C().innerHTML='<div class="box"><h4>My Tasks</h4><div id="miList"></div></div>';
   api({action:'myInstances'}).then(d=>{INST_CACHE=d.instances||[];renderInstList('miList',INST_CACHE,true);});}
-function vTeam(){C().innerHTML='<div class="box"><h4>Team Work — all instances</h4><div id="teList"></div></div>';
-  api({action:'allInstances'}).then(d=>{INST_CACHE=d.instances||[];renderInstList('teList',INST_CACHE,true);});}
+let TEAM_F='today';
+function vTeam(){C().innerHTML=`<div class="box"><h4>Team Work</h4>
+  <div class="chatq" style="padding:0 0 12px">
+    <button id="tf_today" onclick="teamF('today')">Today</button>
+    <button id="tf_pending" onclick="teamF('pending')">All Pending</button>
+    <button id="tf_done" onclick="teamF('done')">Done</button>
+    <button id="tf_all" onclick="teamF('all')">All</button>
+  </div><div id="teList"></div></div>`;
+  api({action:'allInstances'}).then(d=>{INST_CACHE=d.instances||[];teamF(TEAM_F);});}
+function teamF(f){TEAM_F=f;const t=today();
+  document.querySelectorAll('[id^=tf_]').forEach(b=>{b.style.borderColor='';b.style.color='';});
+  const ab=document.getElementById('tf_'+f);if(ab){ab.style.borderColor='var(--accent)';ab.style.color='var(--txt)';}
+  let l=INST_CACHE;
+  if(f==='today')l=l.filter(i=>i.DueDate===t&&i.Status!=='Done');
+  else if(f==='pending')l=l.filter(i=>i.Status==='Pending');
+  else if(f==='done')l=l.filter(i=>i.Status==='Done');
+  renderInstList('teList',l,true);}
 function openComplete(id){const i=INST_CACHE.filter(x=>x.ID===id)[0];if(!i)return;
   let ck=[];try{ck=JSON.parse(i.ChecklistStateJSON||'[]');}catch(e){}
   const ckHtml=ck.length?ck.map((c,ix)=>`<label class="ck"><input type="checkbox" id="ck_${ix}" ${c.done?'checked':''}> ${esc(c.t)}</label>`).join(''):'<div class="empty" style="padding:14px">No checklist for this task.</div>';
@@ -465,114 +488,18 @@ function submitComplete(id,n){const checklist=[];for(let ix=0;ix<n;ix++)checklis
     if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');nav('mytasks');});}
 
 let CK_DRAFT=[];
-
-// ==========================================
-// HELPER FUNCTIONS FOR TIME & NEXT DATE
-// ==========================================
-
-function calcNextDue(t) {
-  let d = new Date(); // Aaj ki date se start karega
-  let createdStr = String(t.CreatedAt || '').slice(0, 10);
-  let created = createdStr ? new Date(createdStr) : new Date();
-  
-  for (let i = 0; i < 366; i++) { // Agle 1 saal tak check karega
-    let ds = d.toLocaleDateString('en-CA'); 
-    let wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-    
-    let dMid = new Date(ds + 'T00:00:00');
-    let cMid = new Date(createdStr + 'T00:00:00');
-    let daysSince = Math.floor((dMid - cMid) / 86400000);
-    
-    let f = t.Frequency, fd = String(t.FreqDetail || '');
-    let match = false;
-    
-    if (f === 'Once') match = (fd === ds);
-    else if (f === 'Daily') match = true;
-    else if (f === 'AlternateDay') match = (daysSince >= 0 && daysSince % 2 === 0);
-    else if (f === 'Weekly') match = (wd === fd);
-    else if (f === 'Fortnightly') match = (wd === fd && Math.floor(Math.max(daysSince, 0) / 7) % 2 === 0);
-    else {
-      let dom = d.getDate(), mon = d.getMonth() + 1;
-      if (f === 'Monthly') match = (dom === Number(fd));
-      else if (f === 'Quarterly') match = (dom === Number(fd) && [1, 4, 7, 10].indexOf(mon) >= 0);
-      else if (f === 'HalfYearly') match = (dom === Number(fd) && (mon === 1 || mon === 7));
-      else if (f === 'Yearly') {
-        let mstr = mon < 10 ? '0' + mon : mon;
-        let dstr = dom < 10 ? '0' + dom : dom;
-        match = (fd === mstr + '-' + dstr);
-      }
-    }
-    
-    if (match) { 
-      // 15 Aug 2026 format me return karega
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-    d.setDate(d.getDate() + 1);
-  }
-  return 'N/A';
-}
-
-function formatTimeNicely(timeStr) {
-  let str = String(timeStr || '');
-  let m = str.match(/(\d{2}:\d{2})/); // HH:MM extract karega
-  if (!m) return str;
-  let parts = m[1].split(':');
-  let h = parseInt(parts[0], 10);
-  let min = parts[1];
-  let ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12;
-  h = h ? h : 12;
-  return (h < 10 ? '0'+h : h) + ':' + min + ' ' + ampm;
-}
-
-// ==========================================
-// MAIN TASKS RENDER FUNCTION
-// ==========================================
-
 function vTasks(){
-  C().innerHTML=`<div class="box">
-    <h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task</button></h4>
-    <div id="tkList"></div>
-  </div>`;
-  
-  Promise.all([api({action:'listTasks'}), api({action:'listEmployees'})]).then(([a,b])=>{
-    TASKS = a.tasks || []; 
-    EMPS = b.employees || [];
-    
-    const el = document.getElementById('tkList');
-    const act = TASKS.filter(t => t.Active === 'Yes');
-    
-    if(!act.length){
-      el.innerHTML='<div class="empty"><span class="ei">📋</span>No tasks yet. Spin up your first recurring task.</div>';
-      return;
-    }
-    
-    el.innerHTML = act.map(t => {
-      const emp = EMPS.filter(e => e.ID === t.AssigneeID)[0];
-      
-      // Naya logic yahan apply ho raha hai
-      let nextDate = calcNextDue(t);
-      let nicelyTime = formatTimeNicely(t.DueTime);
-      
-      return `<div class="trow">
-        <div>
-          <div class="tt">${esc(t.Title)} <span class="pri-${esc(t.Priority)}" style="font-size:11px">● ${esc(t.Priority)}</span></div>
-          <div class="ts" style="line-height:1.6">
-            🔁 ${esc(t.Frequency)}${t.FreqDetail ? ' ('+esc(t.FreqDetail)+')' : ''} · 
-            👤 ${esc(emp ? emp.Name : '—')} · 
-            ⏱ ${esc(nicelyTime)} <br> 
-            📅 Next Due: <b style="color:var(--ok)">${esc(nextDate)}</b>
-          </div>
-        </div>
-        <div class="acts">
-          <button class="btn ghost sm" onclick='openTaskForm(${JSON.stringify(t.ID)})'>Edit</button>
-          <button class="btn danger sm" onclick='delTask(${JSON.stringify(t.ID)})'>Off</button>
-        </div>
-      </div>`;
-    }).join('');
-  });
-}
-
+  C().innerHTML=`<div class="box"><h4>Recurring Task Templates <button class="btn sm" onclick="openTaskForm()">+ New Task</button></h4><div id="tkList"></div></div>`;
+  Promise.all([api({action:'listTasks'}),api({action:'listEmployees'})]).then(([a,b])=>{
+    TASKS=a.tasks||[];EMPS=b.employees||[];
+    const el=document.getElementById('tkList');const act=TASKS.filter(t=>t.Active==='Yes');
+    if(!act.length){el.innerHTML='<div class="empty"><span class="ei">📋</span>No tasks yet. Spin up your first recurring task.</div>';return;}
+    el.innerHTML=act.map(t=>{const emp=EMPS.filter(e=>e.ID===t.AssigneeID)[0];
+      return `<div class="trow"><div>
+        <div class="tt">${esc(t.Title)} <span class="pri-${esc(t.Priority)}" style="font-size:11px">● ${esc(t.Priority)}</span></div>
+        <div class="ts">🔁 ${esc(t.Frequency)}${t.FreqDetail?' ('+esc(t.FreqDetail)+')':''} · 👤 ${esc(emp?emp.Name:'—')} · ⏱ ${esc(t.DueTime)}</div></div>
+        <div class="acts"><button class="btn ghost sm" onclick='openTaskForm(${JSON.stringify(t.ID)})'>Edit</button>
+        <button class="btn danger sm" onclick='delTask(${JSON.stringify(t.ID)})'>Off</button></div></div>`;}).join('');});}
 function freqDetailHint(f){return {Weekly:'Weekday (Mon…Sun)',Fortnightly:'Weekday (Mon…Sun)',Monthly:'Day of month (1–28)',Quarterly:'Day of month (1–28)',HalfYearly:'Day of month (1–28)',Yearly:'MM-DD (e.g. 03-31)',Once:'Date YYYY-MM-DD'}[f]||'Not needed';}
 function openTaskForm(id){const t=id?TASKS.filter(x=>x.ID===id)[0]:null;
   try{CK_DRAFT=t?JSON.parse(t.ChecklistJSON||'[]'):[];}catch(e){CK_DRAFT=[];}
@@ -769,16 +696,16 @@ function botSay(t){const m=document.createElement('div');m.className='msg b';m.t
 function push_(m){const c=document.getElementById('chatm');c.appendChild(m);c.scrollTop=c.scrollHeight;}
 
 (function(){
-  if(!API_SET){
-    const b=document.getElementById('cfgbar');
-    document.getElementById('authView').classList.remove('hidden');
-    b.className='cfgbar';b.style.position='fixed';b.style.top='0';b.style.left='0';b.style.right='0';b.style.zIndex='6';
-    b.innerHTML='🔌 <b>Backend not connected.</b> index.html me GAS URL daalo (script ke top me API constant).';
-    document.body.appendChild(b);
-    return;
-  }
-  if(!tGet())return;
-  api({action:'me'}).then(d=>{if(d.ok){ME=d.me;enterApp();}else{tClr();}}).catch(()=>{});
+  const bar=document.createElement('div');
+  bar.style.position='fixed';bar.style.top='0';bar.style.left='0';bar.style.right='0';bar.style.zIndex='6';
+  function show(ok,msg,withSet){bar.className='cfgbar'+(ok?' ok':'');bar.innerHTML=msg+(withSet?' &nbsp;<a onclick="apiUrlPrompt()">Set URL</a>':'');if(!bar.parentNode)document.body.appendChild(bar);}
+  function hide(){if(bar.parentNode)bar.parentNode.removeChild(bar);}
+  if(!API_SET){show(false,'🔌 <b>Backend not connected.</b> GAS URL yahin set karo — file push ki zaroorat nahi.',true);return;}
+  fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'__ping'})})
+    .then(r=>r.json())
+    .then(()=>{show(true,'✅ Backend connected · SP Mines OMS');setTimeout(hide,2500);
+      if(tGet())api({action:'me'}).then(d=>{if(d.ok){ME=d.me;enterApp();}else{tClr();}}).catch(()=>{});})
+    .catch(()=>{show(false,'⚠️ <b>Backend respond nahi kar raha.</b> Naya deployment banaya? URL badla hoga — yahin update karo.',true);});
 })();
 </script>
 </body>
