@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SP Mines - OMS Sheet</title>
+<title>SP Mines OMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -311,7 +311,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="nav" id="mainNav"></div>
     <div class="content" id="content"></div>
-    <div class="appfoot">SP Mines · Operations Management System · v2.2.1</div>
+    <div class="appfoot">SP Mines · Operations Management System · v2.3.0</div>
   </div>
 </div>
 
@@ -340,7 +340,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycbzp3qvG3d2elX6mlgCk21TLdJte2eciaXOFfo3gbSGW8tpe2J5MsE8vzuZXfm5dLNU/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbzP_85ISD18LeMiaSdHhCErcGjZ-2w_H3sozgA4rOzxxJh70iI2ObUUtoJZZ3Hsx1-J/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
@@ -429,6 +429,7 @@ function buildNav(){
   if(lv()>=3){tabs.push(['depts','Departments'],['admin','Admin']);}
   document.getElementById('mainNav').innerHTML=tabs.map(t=>`<button id="nav_${t[0]}" onclick="nav('${t[0]}')">${t[1]}</button>`).join('');}
 function nav(t){
+  LAST_TAB=t;
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('nav_'+t);if(b)b.classList.add('active');
   ({dash:vDash,mytasks:vMyTasks,tasks:vTasks,team:vTeam,reports:vReports,emps:vEmps,hols:vHols,leaves:vLeaves,depts:vDepts,admin:vAdmin})[t]();}
@@ -488,9 +489,13 @@ function openComplete(id){const i=INST_CACHE.filter(x=>x.ID===id)[0];if(!i)retur
     ${ckHtml}
     <div class="field" style="margin-top:12px"><label>Remarks / Evidence</label><textarea id="cpRemarks" placeholder="What was done, references, proof…"></textarea></div>
     <div class="mc-actionbar"><button class="btn" onclick='submitComplete(${JSON.stringify(id)},${ck.length})'>Mark Done ✅</button></div>`);}
-function submitComplete(id,n){const checklist=[];for(let ix=0;ix<n;ix++)checklist.push({done:document.getElementById('ck_'+ix).checked});
-  api({action:'completeInstance',id:id,checklist:checklist,remarks:document.getElementById('cpRemarks').value.trim()}).then(d=>{
-    if(!d.ok)return toast(d.message,'err');closeForm();toast(d.message,'ok');nav('mytasks');});}
+let LAST_TAB='dash';
+function submitComplete(id,n){const checklist=[];for(let ix=0;ix<n;ix++){const el=document.getElementById('ck_'+ix);checklist.push({done:!!(el&&el.checked)});}
+  const rm=document.getElementById('cpRemarks');
+  api({action:'completeInstance',id:id,checklist:checklist,remarks:rm?rm.value.trim():''}).then(d=>{
+    if(!d||!d.ok){modalAlert((d&&d.message)||'Could not complete this task.','Not Done ❌','⚠️');return;}
+    closeForm();toast(d.message,'ok');nav(LAST_TAB);})
+   .catch(e=>{modalAlert('Request failed: '+(e&&e.message||e),'Not Done ❌','⚠️');});}
 
 let CK_DRAFT=[];
 function vTasks(){
