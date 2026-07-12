@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SP Mines - CheckList OMS</title>
+<title>SP Mines OMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -311,7 +311,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="nav" id="mainNav"></div>
     <div class="content" id="content"></div>
-    <div class="appfoot">SP Mines · Operations Management System · v2.3.1</div>
+    <div class="appfoot">SP Mines · Operations Management System · v2.3.2</div>
   </div>
 </div>
 
@@ -340,7 +340,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycbw51ldxQd7Hx4P3tKN-FlwQ0szIFJ8H-Jk_xSlRIqKawoSP_n7i1c19GybTvkTuodC5/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycby1HJLelyhKlA9S11z3HrpgET_FSFk94mOBawQ3VgZOzCox43hgi_D0rV524NZ2Qb8U/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
@@ -443,7 +443,7 @@ function vDash(){api({action:'dashboard'}).then(d=>{const s=d.stats;
     <div class="stat"><div class="n" style="color:#7fe9c0">${s.doneToday||0}</div><div class="l">Done Today</div><div class="bar" style="background:var(--ok)"></div></div>
     <div class="stat"><div class="n">${s.completionPct}%</div><div class="l">Completion (${s.scope})</div><div class="bar" style="background:var(--grad)"></div></div>
   </div><div class="box"><h4>${s.overdue?'🔥 Needs attention':'Work board'} <span style="font-size:12px;color:var(--muted);font-weight:400">${s.upcoming?s.upcoming+' upcoming':''}</span></h4><div id="dToday"></div></div>`;
-  renderInstList('dToday',d.todayList,true);});}
+  renderInstList('dToday',d.todayList,false);});}
 
 function renderInstList(elId,list,canComplete){
   const el=document.getElementById(elId);
@@ -451,7 +451,7 @@ function renderInstList(elId,list,canComplete){
   el.innerHTML=list.map(i=>{
     const st=i.LiveStatus||i.Status;
     const chips=[];
-    if(i.Deferred)chips.push(`<span class="badge bg-Deferred" title="Original ${esc(i.Deferred)}">⏭ Deferred · ${esc(i.Deferred)}</span>`);
+    if(i.Deferred)chips.push(`<span class="badge bg-Deferred" title="Original ${esc(String(i.Deferred).slice(0,10))}">⏭ Deferred · ${esc(String(i.Deferred).slice(0,10))}</span>`);
     if(!i.Deferred&&st!=='Done'&&i.OrigDate&&String(i.DueDate)>String(i.OrigDate))chips.push(`<span class="badge bg-Overdue" title="Original due ${esc(i.OrigDate)}">↻ Carried · since ${esc(i.OrigDate)}</span>`);
     if(st==='Pending'&&String(i.DueDate)>today())chips.push(`<span class="badge bg-Pending">📆 Due ${esc(i.DueDate)}</span>`);
     chips.push(`<span class="pri-${esc(i.Priority)}" style="font-size:11px;font-weight:600">● ${esc(i.Priority)}</span>`);
