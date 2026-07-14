@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SP Mines - CheckList OMS</title>
+<title>SP Mines OMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -109,6 +109,22 @@ body{background:var(--bg);color:var(--txt);min-height:100dvh;letter-spacing:.1px
 .bg-Late{background:rgba(255,181,71,.14);color:#ffd591;border:1px solid rgba(255,181,71,.36)}
 .bg-Missed{background:rgba(255,93,108,.14);color:#ff97a2;border:1px solid rgba(255,93,108,.36)}
 .bg-Leave{background:rgba(90,169,255,.14);color:#9fd0ff;border:1px solid rgba(90,169,255,.36)}
+/* report charts (pure css) */
+.donut{width:92px;height:92px;border-radius:50%;position:relative;flex-shrink:0}
+.donut::after{content:"";position:absolute;inset:11px;border-radius:50%;background:#14141f}
+.donut span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;z-index:1}
+.hbar{display:flex;height:16px;border-radius:9px;overflow:hidden;background:rgba(255,255,255,.06);min-width:120px}
+.hbar i{height:100%;display:block}
+.hbar .sOn{background:var(--ok)}.hbar .sLate{background:var(--warn)}.hbar .sMiss{background:var(--err)}.hbar .sPend{background:#9aa0b4}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);margin-top:8px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.repHead{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.repHead .meta{flex:1;min-width:200px}
+.ovRow{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--brd)}
+.ovRow:last-child{border-bottom:none}
+.ovRow .nm{width:150px;font-size:13.5px;font-weight:500;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovRow .hbar{flex:1}
+.ovRow .pc{width:52px;text-align:right;font-weight:700;font-size:14px;flex-shrink:0}
 .pri-High{color:#ff97a2}.pri-Medium{color:#ffc875}.pri-Low{color:#8fd0ff}
 .nav{display:flex;gap:8px;padding:14px 20px;overflow-x:auto;border-bottom:1px solid var(--brd);scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
@@ -311,7 +327,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
     </div>
     <div class="nav" id="mainNav"></div>
     <div class="content" id="content"></div>
-    <div class="appfoot">SP Mines · Operations Management System · v2.3.2</div>
+    <div class="appfoot">SP Mines · Operations Management System · v2.4.0</div>
   </div>
 </div>
 
@@ -340,7 +356,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.015)}
    Deploy: Apps Script -> Deploy -> New deployment -> Web app
            (Execute as: Me, Access: Anyone) -> copy /exec URL
    ============================================================ */
-const API_DEFAULT = "https://script.google.com/macros/s/AKfycby1HJLelyhKlA9S11z3HrpgET_FSFk94mOBawQ3VgZOzCox43hgi_D0rV524NZ2Qb8U/exec";
+const API_DEFAULT = "https://script.google.com/macros/s/AKfycbz9YOa_QLAeOqXOv2YsBkFMhcpJ79zrqDrGPiVe8UudPUPGKUbDm2roprpn7h4IUBav/exec";
 let API=(function(){try{return localStorage.getItem('spm_api')||API_DEFAULT}catch(e){return API_DEFAULT}})();
 /* ============================================================ */
 
@@ -659,15 +675,26 @@ function runReport(){
     if(!d.ok)return toast(d.message||'Report failed','err');
     REP_DATA=d;const out=document.getElementById('rpOut');
     if(!d.report.length){out.innerHTML='<div class="box"><div class="empty"><span class="ei">📊</span>No task instances in this range. Try a wider date window.</div></div>';return;}
-    out.innerHTML=d.report.map(r=>{
+    const seg=(s)=>{const tot=Math.max(s.total,1);
+      return `<div class="hbar" title="OnTime ${s.onTime} · Late ${s.late} · Missed ${s.missed} · Pending ${s.pending}">
+        <i class="sOn" style="width:${s.onTime*100/tot}%"></i><i class="sLate" style="width:${s.late*100/tot}%"></i>
+        <i class="sMiss" style="width:${s.missed*100/tot}%"></i><i class="sPend" style="width:${s.pending*100/tot}%"></i></div>`;};
+    const pcColor=(p)=>p>=80?'#7fe9c0':p>=50?'#ffd591':'#ff97a2';
+    const overview=`<div class="box"><h4>📊 Team Overview <span style="font-size:12px;color:var(--muted);font-weight:400">${esc(d.from)} → ${esc(d.to)}</span></h4>
+      ${d.report.map(r=>`<div class="ovRow"><div class="nm">${esc(r.emp.Name)}</div>${seg(r.summary)}<div class="pc" style="color:${pcColor(r.summary.onTimePct)}">${r.summary.onTimePct}%</div></div>`).join('')}
+      <div class="legend"><span><b style="background:var(--ok)"></b>On Time</span><span><b style="background:var(--warn)"></b>Late</span><span><b style="background:var(--err)"></b>Missed</span><span><b style="background:#9aa0b4"></b>Pending</span></div></div>`;
+    out.innerHTML=overview+d.report.map(r=>{
       const s=r.summary;
       const leaveHtml=r.leaves.length?`<div class="ts" style="margin:6px 0 10px">🏖 Leaves: ${r.leaves.map(l=>esc(l.From)+(l.To!==l.From?' → '+esc(l.To):'')+' ('+esc(l.Reason)+')').join(' · ')}</div>`:'';
       const rows=r.rows.map(x=>`<div class="trow"><div>
           <div class="tt">${esc(x.Title)} <span class="pri-${esc(x.Priority)}" style="font-size:11px">● ${esc(x.Priority)}</span></div>
           <div class="ts">📅 ${esc(x.OrigDate)} ${esc(x.DueTime)}${x.CompletedAt?' · ✓ '+esc(x.CompletedAt):''}${x.Remarks?' · 📝 '+esc(String(x.Remarks).slice(0,60)):''}</div></div>
           <div class="acts"><span class="badge bg-${esc(x.Verdict)}">${x.Verdict==='OnTime'?'On Time':x.Verdict}</span>${x.LeaveReason?`<span class="badge bg-Leave">${esc(x.LeaveReason)}</span>`:''}</div></div>`).join('');
+      const p=r.summary.onTimePct, ring=`<div class="donut" style="background:conic-gradient(${pcColor(p)} ${p*3.6}deg, rgba(255,255,255,.08) 0)"><span style="color:${pcColor(p)}">${p}%</span></div>`;
       return `<div class="box">
         <h4>${esc(r.emp.Name)} <span style="font-size:12px;color:var(--muted);font-weight:400">${esc(r.emp.Role)}${r.emp.Dept?' · '+esc(r.emp.Dept):''}</span></h4>
+        <div class="repHead">${ring}<div class="meta">${seg(r.summary)}
+          <div class="legend"><span><b style="background:var(--ok)"></b>On Time ${r.summary.onTime}</span><span><b style="background:var(--warn)"></b>Late ${r.summary.late}</span><span><b style="background:var(--err)"></b>Missed ${r.summary.missed}</span><span><b style="background:#9aa0b4"></b>Pending ${r.summary.pending}</span></div></div></div>
         <div class="cards" style="margin-bottom:10px">
           <div class="stat"><div class="n">${s.onTimePct}%</div><div class="l">On-Time Rate</div><div class="bar" style="background:var(--grad)"></div></div>
           <div class="stat"><div class="n" style="color:#7fe9c0">${s.onTime}</div><div class="l">On Time</div><div class="bar" style="background:var(--ok)"></div></div>
