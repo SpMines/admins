@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -806,6 +806,289 @@ function push_(m){const c=document.getElementById('chatm');c.appendChild(m);c.sc
       if(tGet())api({action:'me'}).then(d=>{if(d&&d.ok&&d.me){ME=d.me;enterApp();}else{tClr();ME=null;showAuth();}}).catch(()=>{tClr();ME=null;});})
     .catch(()=>{show(false,'⚠️ <b>Backend not responding.</b> Made a new deployment? URL changed — update it here.',true);});
 })();
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SP WA Sender</title>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a14; --accent:#6C5CE7; --accent2:#a29bfe;
+  --txt:#eceef6; --muted:#9aa0b4; --brd:rgba(255,255,255,.09);
+  --ok:#37d399; --warn:#ffb547; --err:#ff5d6c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100dvh}
+body{font-family:'Jost',sans-serif;background:var(--bg);color:var(--txt);overflow-x:hidden}
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden}
+.aurora::before,.aurora::after{content:'';position:absolute;width:60vmax;height:60vmax;border-radius:50%;filter:blur(120px);opacity:.28}
+.aurora::before{background:#6C5CE7;top:-20vmax;left:-15vmax;animation:fl 14s ease-in-out infinite alternate}
+.aurora::after{background:#46b5ff;bottom:-25vmax;right:-15vmax;animation:fl 16s ease-in-out infinite alternate-reverse}
+@keyframes fl{to{transform:translate(6vmax,4vmax) scale(1.15)}}
+
+.shell{max-width:760px;margin:0 auto;min-height:100dvh;padding:22px 18px 120px;
+  background:rgba(16,16,28,.92);backdrop-filter:blur(28px);
+  border-left:1px solid var(--brd);border-right:1px solid var(--brd)}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.logo{font-weight:800;font-size:20px;background:linear-gradient(135deg,#6C5CE7,#a29bfe);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{font-size:12px;color:var(--muted)}
+
+.card{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:20px;
+  padding:18px;margin-bottom:16px;animation:cardIn .5s cubic-bezier(.16,1,.3,1)}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px;font-weight:500}
+input,textarea{width:100%;font-family:'Jost',sans-serif;font-size:16px;color:var(--txt);
+  background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:12px;
+  padding:11px 13px;outline:none;transition:border .2s}
+input:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:88px;resize:vertical}
+
+.btn{font-family:'Jost',sans-serif;font-weight:700;font-size:15px;color:#fff;border:0;
+  border-radius:12px;padding:12px 18px;cursor:pointer;
+  background:linear-gradient(135deg,#6C5CE7,#a29bfe);transition:transform .15s,opacity .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.ghost{background:rgba(255,255,255,.06);border:1px solid var(--brd);font-weight:500}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.row .btn{flex:1;min-width:140px}
+
+.filebtn{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);
+  background:rgba(255,255,255,.05);border:1px dashed var(--brd);border-radius:12px;
+  padding:11px 13px;cursor:pointer;margin-top:10px}
+.filebtn.has{color:var(--ok);border-color:var(--ok)}
+#fileInput{display:none}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:rgba(255,255,255,.04);border:1px solid var(--brd);border-radius:16px;
+  padding:12px 8px;text-align:center}
+.stat b{display:block;font-size:22px;font-weight:800}
+.stat span{font-size:11px;color:var(--muted)}
+.stat .bar{height:3px;border-radius:2px;margin:6px auto 0;width:60%}
+
+.item{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.03);
+  border:1px solid var(--brd);border-left:4px solid var(--muted);border-radius:14px;
+  padding:12px 14px;margin-bottom:10px}
+.item .info{flex:1;min-width:0}
+.item .msg{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.st-READY  {border-left-color:var(--muted)}  .st-READY .pill{background:rgba(154,160,180,.15);color:var(--muted)}
+.st-QUEUED,.st-SENDING{border-left-color:var(--accent)} .st-QUEUED .pill,.st-SENDING .pill{background:rgba(108,92,231,.2);color:var(--accent2)}
+.st-SENT   {border-left-color:var(--ok)}     .st-SENT .pill{background:rgba(55,211,153,.15);color:var(--ok)}
+.st-FAILED {border-left-color:var(--err)}    .st-FAILED .pill{background:rgba(255,93,108,.15);color:var(--err)}
+.st-SENDING{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 18px rgba(108,92,231,.35)}}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+
+#loader{position:fixed;top:0;left:0;right:0;height:3px;z-index:10002;display:none;
+  background:linear-gradient(90deg,#6C5CE7,#46b5ff);animation:load 1s linear infinite;
+  background-size:200% 100%}
+@keyframes load{to{background-position:-200% 0}}
+
+.toast{position:fixed;top:16px;right:16px;z-index:10001;background:rgba(16,16,28,.95);
+  backdrop-filter:blur(20px);border:1px solid var(--brd);border-radius:14px;
+  padding:12px 16px;font-size:14px;max-width:320px;animation:cardIn .3s;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.toast.ok{border-left:4px solid var(--ok)} .toast.err{border-left:4px solid var(--err)}
+
+.modalWrap{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);
+  display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px}
+.modal{margin:auto;max-width:400px;width:100%;background:rgba(16,16,28,.97);
+  backdrop-filter:blur(26px);border:1px solid var(--brd);border-radius:20px;
+  padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:cardIn .4s}
+.modal h2{font-size:19px;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:8px}
+.hidden{display:none!important}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:26px}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<div id="loader"></div>
+
+<!-- TOKEN GATE -->
+<div class="modalWrap" id="gate">
+  <div class="modal">
+    <h2>SP WA Sender 🔐</h2>
+    <p>Enter the access token (same as Code.gs). Saved on this device.</p>
+    <label>Token</label>
+    <input type="password" id="tokIn" placeholder="secret token">
+    <div class="row"><button class="btn" onclick="saveTok()">Unlock ⚡</button></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="shell hidden" id="app">
+  <div class="top">
+    <div><div class="logo">SP WA Sender</div><div class="tag">Sheet → WhatsApp. No typing twice.</div></div>
+    <button class="btn ghost" style="padding:8px 14px;font-size:13px" onclick="refresh()">↻</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="stQ">–</b><span>In Queue</span><div class="bar" style="background:var(--accent)"></div></div>
+    <div class="stat"><b id="stS">–</b><span>Sent</span><div class="bar" style="background:var(--ok)"></div></div>
+    <div class="stat"><b id="stF">–</b><span>Failed</span><div class="bar" style="background:var(--err)"></div></div>
+    <div class="stat"><b id="stR">–</b><span>Ready</span><div class="bar" style="background:var(--muted)"></div></div>
+  </div>
+
+  <div class="card">
+    <label>Message</label>
+    <textarea id="msg" placeholder="Type the WhatsApp message..."></textarea>
+    <label>WhatsApp Number</label>
+    <input id="num" inputmode="numeric" placeholder="9876543210  (10 digit = auto +91)">
+    <div class="filebtn" id="fileBtn" onclick="document.getElementById('fileInput').click()">
+      📎 <span id="fileLbl">Attach file (optional · JPG / PNG / PDF · max 12MB)</span>
+    </div>
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xlsx">
+    <div class="row">
+      <button class="btn ghost" id="addBtn" onclick="addMsg()">+ Add to Queue</button>
+      <button class="btn" id="sendBtn" onclick="sendAll()">Send All 🚀</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <b style="font-size:15px">Outbox</b>
+      <button class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="retryFailed()">Retry Failed ↻</button>
+    </div>
+    <div id="list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div class="foot">SP Mines · WA Sender · v1.1.0<br>
+  <span style="font-size:11px">⚠ Bridge must be running on the PC for messages to go out.</span></div>
+</div>
+
+<script>
+const API_DEFAULT = 'https://script.google.com/macros/s/AKfycbyGdfkQf8cEAz35OSO70XFF_gN9nK3U8-EF5A4Htz1gPl4O397qy-tlSNW1Ij1CezUN/exec';
+let API = localStorage.getItem('waapi') || API_DEFAULT;
+let TOK = localStorage.getItem('watok') || '';
+let fileData = null;
+let busyN = 0;
+
+/* ---------- boot ---------- */
+if(TOK){ gateOff(); }
+function saveTok(){
+  const t = document.getElementById('tokIn').value.trim();
+  if(!t) return toast('Token daalo pehle','err');
+  TOK = t; localStorage.setItem('watok', t);
+  gateOff();
+}
+function gateOff(){
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  refresh();
+  setInterval(refresh, 15000);
+}
+
+/* ---------- api ---------- */
+async function api(body, silent){
+  body.token = TOK;
+  if(!silent) loader(1);
+  try{
+    const r = await fetch(API, {method:'POST', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify(body)});
+    const j = await r.json();
+    if(j.error === 'bad token'){ localStorage.removeItem('watok'); location.reload(); }
+    return j;
+  }catch(e){
+    toast('Connection failed — check GAS URL / internet','err');
+    return {ok:false,error:'network'};
+  }finally{ if(!silent) loader(-1); }
+}
+function loader(d){ busyN=Math.max(0,busyN+d);
+  document.getElementById('loader').style.display = busyN?'block':'none'; }
+
+/* ---------- actions ---------- */
+document.getElementById('fileInput').addEventListener('change', function(){
+  const f = this.files[0];
+  if(!f) return;
+  if(f.size > 12*1024*1024){ toast('File 12MB se badi hai','err'); this.value=''; return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    fileData = { name:f.name, mime:f.type||'application/octet-stream',
+                 base64: rd.result.split(',')[1] };
+    document.getElementById('fileLbl').textContent = '✅ ' + f.name;
+    document.getElementById('fileBtn').classList.add('has');
+  };
+  rd.readAsDataURL(f);
+});
+
+async function addMsg(){
+  const msg = document.getElementById('msg').value.trim();
+  const num = document.getElementById('num').value.replace(/\D/g,'');
+  if(!msg) return toast('Message likho','err');
+  if(num.length < 10) return toast('Valid number daalo','err');
+  const b = document.getElementById('addBtn'); b.disabled = true;
+  const p = {action:'add', message:msg, number:num};
+  if(fileData){ p.fileName=fileData.name; p.fileMime=fileData.mime; p.fileBase64=fileData.base64; }
+  const r = await api(p);
+  b.disabled = false;
+  if(!r.ok) return toast(r.error,'err');
+  toast('Added to queue ✅','ok');
+  document.getElementById('msg').value=''; document.getElementById('num').value='';
+  clearFile(); refresh();
+}
+function clearFile(){
+  fileData=null; document.getElementById('fileInput').value='';
+  document.getElementById('fileLbl').textContent='Attach file (optional · JPG / PNG / PDF · max 12MB)';
+  document.getElementById('fileBtn').classList.remove('has');
+}
+
+async function sendAll(){
+  const b = document.getElementById('sendBtn'); b.disabled = true;
+  const r = await api({action:'queue'});
+  b.disabled = false;
+  if(!r.ok) return toast(r.error,'err');
+  toast(r.queued ? r.queued+' message(s) queued 🚀 — bridge bhejega'
+                 : 'Kuch READY nahi mila','ok');
+  refresh();
+}
+
+async function retryFailed(){
+  const r = await api({action:'retry'});
+  if(!r.ok) return toast(r.error,'err');
+  toast(r.queued+' failed re-queued ↻','ok');
+  refresh();
+}
+
+/* ---------- list ---------- */
+async function refresh(){
+  const r = await api({action:'list'}, true);
+  if(!r.ok) return;
+  document.getElementById('stQ').textContent = r.stats.q;
+  document.getElementById('stS').textContent = r.stats.s;
+  document.getElementById('stF').textContent = r.stats.f;
+  document.getElementById('stR').textContent = r.stats.r;
+  const L = document.getElementById('list');
+  if(!r.items.length){ L.innerHTML='<div class="empty">Nothing here yet. Add your first message ⚡</div>'; return; }
+  L.innerHTML = r.items.map(it => `
+    <div class="item st-${esc(it.status)}">
+      <div class="info">
+        <div class="msg">${it.hasFile?'📎 ':''}${esc(it.message)}</div>
+        <div class="meta">${esc(it.number)}${it.sentAt?' · '+esc(it.sentAt):''}${it.error?' · <span style="color:var(--err)">'+esc(it.error)+'</span>':''}</div>
+      </div>
+      <div class="pill">${esc(it.status)}</div>
+    </div>`).join('');
+}
+
+/* ---------- utils ---------- */
+function esc(s){ return String(s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(t, k){
+  const d = document.createElement('div');
+  d.className = 'toast ' + (k||'ok');
+  d.textContent = t;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 3500);
+}
 </script>
 </body>
 </html>
