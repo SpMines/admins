@@ -27,6 +27,19 @@
   --shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05);
   --sidebar:248px;
 }
+/* ===== Dark mode ===== */
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#161b25; --surface-2:#1d2430; --line:#28303d;
+  --txt:#e8ecf3; --muted:#9aa4b5; --faint:#6b7488;
+  --accent:#5b8cff; --accent-weak:#1b2740;
+  --ok:#34d399; --ok-bg:#12291f; --warn:#fbbf24; --warn-bg:#2a2112;
+  --err:#f87171; --err-bg:#2a1414; --info:#38bdf8; --info-bg:#102634;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+}
+:root[data-theme="dark"] .msg.out{color:#fff}
+:root[data-theme="dark"] .brand .logo{box-shadow:0 6px 16px rgba(91,140,255,.25)}
+html{transition:none}
+body,.header,.sidebar,.card,.stat,.table-wrap,.conv,.editrow,.search input,.fld input,.fld select,.fld textarea{transition:background .25s,border-color .25s,color .25s}
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Jost',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5}
@@ -52,10 +65,23 @@ button{font-family:inherit;cursor:pointer}
 .brand .sub{font-size:11.5px;color:var(--muted);margin-top:-1px}
 .header .sectitle{font-size:16px;font-weight:600}
 .header .right{display:flex;align-items:center;gap:8px}
-.hbtn{width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--surface);
-     display:flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s}
-.hbtn:hover{background:var(--surface-2);color:var(--txt)}
+.hbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+     display:flex;align-items:center;justify-content:center;color:var(--muted);
+     transition:transform .18s cubic-bezier(.2,.8,.3,1.4),background .18s,color .18s,box-shadow .18s;position:relative;overflow:hidden}
+.hbtn svg{transition:transform .4s cubic-bezier(.2,.8,.3,1.2)}
+.hbtn:hover{background:var(--accent-weak);color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 16px rgba(47,107,255,.18)}
+.hbtn:active{transform:translateY(0) scale(.94)}
+.hbtn.spin svg{transform:rotate(360deg)}
+.hbtn.menu-btn:hover svg{transform:rotate(90deg)}
+/* ripple */
+.hbtn::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle,var(--accent) 10%,transparent 10.5%);
+     background-position:center;background-repeat:no-repeat;background-size:0 0;opacity:.25;transition:background-size .4s,opacity .5s}
+.hbtn:active::after{background-size:220% 220%;opacity:0;transition:0s}
 .menu-btn{display:none}
+/* theme toggle icon swap */
+.theme-ic .sun{display:none}
+:root[data-theme="dark"] .theme-ic .sun{display:block}
+:root[data-theme="dark"] .theme-ic .moon{display:none}
 
 /* ---------- nav ---------- */
 .nav-label{font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);
@@ -205,8 +231,12 @@ tbody tr:last-child td{border-bottom:none}
       <div class="sectitle" id="sectitle">Live Chat</div>
     </div>
     <div class="right">
-      <button class="hbtn" title="Refresh" onclick="refresh()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+      <button class="hbtn theme-ic" title="Toggle dark mode" onclick="toggleTheme()">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+      </button>
+      <button class="hbtn" id="refreshBtn" title="Refresh" onclick="refresh(true)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
       </button>
     </div>
   </header>
@@ -254,7 +284,14 @@ function buildNav(){
 }
 function go(t){TAB=t;ACTIVE_CONV=null;buildNav();$("sectitle").textContent=(TABS.find(function(x){return x[0]===t})||["","Live Chat"])[1];closeNav();render()}
 
-function refresh(){return api({action:"dash"}).then(function(d){if(!d.ok){toast(d.error||"Error","err");return}D=d;buildNav();render()})}
+function refresh(animate){
+  if(animate){var b=$("refreshBtn");if(b){b.classList.add("spin");setTimeout(function(){b.classList.remove("spin")},450)}}
+  return api({action:"dash"}).then(function(d){if(!d.ok){toast(d.error||"Error","err");return}D=d;buildNav();render()});
+}
+/* dark mode */
+function applyTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("mnk_theme",t)}catch(e){}}
+function toggleTheme(){var cur=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";applyTheme(cur)}
+(function(){var t="light";try{t=localStorage.getItem("mnk_theme")|| (matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){};applyTheme(t)})();
 
 function render(){
   if(TAB==="chat")renderChat();
@@ -276,13 +313,21 @@ function roleOf(num){
 }
 function renderChat(){
   var g=groupConvs(), ids=Object.keys(g);
+  var cl=D.chatlog||[];
+  var sent=cl.filter(function(m){return (m.Dir||"").toUpperCase()==="OUT"}).length;
+  var recv=cl.filter(function(m){return (m.Dir||"").toUpperCase()==="IN"}).length;
   var h='<div class="page-head"><h2>Recruitment Overview</h2><p>Live candidate conversations handled by Minakshi.</p></div>';
   h+='<div class="stats">'
     +statCard("Total Applicants",D.stats.total||0,"All time","users")
-    +statCard("Today",D.stats.today||0,"New today","inbox")
-    +statCard("Active Chats",ids.length,"Conversations","chat")+'</div>';
+    +statCard("Messages Sent",sent,"By Minakshi","chat")
+    +statCard("Messages Received",recv,"From candidates","inbox")
+    +statCard("Active Chats",ids.length,"Conversations","users")+'</div>';
 
-  if(!ids.length){ h+=card("Recent Conversations", emptyState("inbox","No conversations yet","Jab candidate Minakshi ko message karenge, yahan live dikhega.")); $("view").innerHTML=h; return; }
+  if(!ids.length){
+    h+=card("Recent Conversations", emptyState("inbox","No conversations logged yet",
+      "Jab candidate message karenge, yahan live dikhega. Agar reply to ja raha par yahan khaali hai — bot ka latest version (logging wala) chalu karo + GAS me 'Chat Log' tab banega. Dekho: Sheet me Chat Log tab + rows."));
+    $("view").innerHTML=h; return;
+  }
 
   if(!ACTIVE_CONV||!g[ACTIVE_CONV])ACTIVE_CONV=ids[0];
   // conversation list
