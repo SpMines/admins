@@ -27,14 +27,14 @@
   --shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05);
   --sidebar:248px;
 }
-/* ===== Dark mode ===== */
+/* ===== Dark navy (professional, default) ===== */
 :root[data-theme="dark"]{
-  --bg:#0d1117; --surface:#161b25; --surface-2:#1d2430; --line:#28303d;
-  --txt:#e8ecf3; --muted:#9aa4b5; --faint:#6b7488;
-  --accent:#5b8cff; --accent-weak:#1b2740;
-  --ok:#34d399; --ok-bg:#12291f; --warn:#fbbf24; --warn-bg:#2a2112;
-  --err:#f87171; --err-bg:#2a1414; --info:#38bdf8; --info-bg:#102634;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  --bg:#0a1120; --surface:#111a2e; --surface-2:#172338; --line:#243350;
+  --txt:#e9eef7; --muted:#9db0cc; --faint:#64748b;
+  --accent:#4d8dff; --accent-weak:#16233f;
+  --ok:#34d399; --ok-bg:#0f2a20; --warn:#fbbf24; --warn-bg:#2a2112;
+  --err:#f87171; --err-bg:#2a1518; --info:#38bdf8; --info-bg:#0f2535;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.4);
 }
 :root[data-theme="dark"] .msg.out{color:#fff}
 :root[data-theme="dark"] .brand .logo{box-shadow:0 6px 16px rgba(91,140,255,.25)}
@@ -64,24 +64,28 @@ button{font-family:inherit;cursor:pointer}
 .brand h1{font-size:16px;font-weight:600;letter-spacing:.2px}
 .brand .sub{font-size:11.5px;color:var(--muted);margin-top:-1px}
 .header .sectitle{font-size:16px;font-weight:600}
-.header .right{display:flex;align-items:center;gap:8px}
-.hbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
-     display:flex;align-items:center;justify-content:center;color:var(--muted);
-     transition:transform .18s cubic-bezier(.2,.8,.3,1.4),background .18s,color .18s,box-shadow .18s;position:relative;overflow:hidden}
-.hbtn svg{transition:transform .4s cubic-bezier(.2,.8,.3,1.2)}
-.hbtn:hover{background:var(--accent-weak);color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 16px rgba(47,107,255,.18)}
-.hbtn:active{transform:translateY(0) scale(.94)}
+/* grouped action pill */
+.header .right{display:flex;align-items:center;gap:6px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2)}
+.hbtn{width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:transparent;
+     display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;
+     transition:transform .18s cubic-bezier(.2,.8,.3,1.4),background .18s,color .18s,box-shadow .18s,border-color .18s;position:relative;overflow:hidden}
+.hbtn svg{width:18px;height:18px;transition:transform .45s cubic-bezier(.2,.8,.3,1.2)}
+.hbtn:hover{background:var(--surface);color:var(--accent);border-color:var(--line);transform:translateY(-1px);box-shadow:0 4px 12px rgba(47,107,255,.16)}
+.hbtn:active{transform:translateY(0) scale(.92)}
 .hbtn.spin svg{transform:rotate(360deg)}
+.hbtn.menu-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-right:4px}
 .hbtn.menu-btn:hover svg{transform:rotate(90deg)}
-/* ripple */
+/* glow ripple on tap */
 .hbtn::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle,var(--accent) 10%,transparent 10.5%);
-     background-position:center;background-repeat:no-repeat;background-size:0 0;opacity:.25;transition:background-size .4s,opacity .5s}
+     background-position:center;background-repeat:no-repeat;background-size:0 0;opacity:.22;transition:background-size .45s,opacity .55s}
 .hbtn:active::after{background-size:220% 220%;opacity:0;transition:0s}
 .menu-btn{display:none}
-/* theme toggle icon swap */
+/* theme toggle: sun glows gold in dark, moon soft in light */
 .theme-ic .sun{display:none}
+.theme-ic:hover .moon{color:#6b7cff}
 :root[data-theme="dark"] .theme-ic .sun{display:block}
 :root[data-theme="dark"] .theme-ic .moon{display:none}
+:root[data-theme="dark"] .theme-ic:hover{color:#fbbf24;box-shadow:0 4px 14px rgba(251,191,36,.22)}
 
 /* ---------- nav ---------- */
 .nav-label{font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);
@@ -291,7 +295,7 @@ function refresh(animate){
 /* dark mode */
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("mnk_theme",t)}catch(e){}}
 function toggleTheme(){var cur=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";applyTheme(cur)}
-(function(){var t="light";try{t=localStorage.getItem("mnk_theme")|| (matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){};applyTheme(t)})();
+(function(){var t="dark";try{var saved=localStorage.getItem("mnk_theme");if(saved)t=saved}catch(e){};applyTheme(t)})();
 
 function render(){
   if(TAB==="chat")renderChat();
@@ -307,9 +311,32 @@ function groupConvs(){
   var g={};(D.chatlog||[]).forEach(function(r){var id=r["Chat ID"]||r["WA Number"]||"?";(g[id]=g[id]||[]).push(r)});
   return g;
 }
-function roleOf(num){
-  var a=(D.applicants||[]).find(function(x){return String(x["WA Number"]||"")===String(num)||String(x["Chat ID"]||"").indexOf(num)>=0});
-  return a?(a.Post||""):"";
+/* --- phone mapping: show the REAL number the candidate typed, not the @lid privacy id --- */
+function resolvePhone(r){
+  if(!r)return "";
+  for(var k in r){ if(!r.hasOwnProperty(k))continue;
+    if(k==="WA Number"||k==="Chat ID"||k==="__row")continue;
+    if(/phone|mobile|contact|whats/i.test(String(k))){
+      var raw=String(r[k]==null?"":r[k]).trim();
+      if(raw.replace(/\D/g,"").length>=7) return raw;
+    }
+  }
+  // fallback: WA Number only if it looks like a real phone (a 14+ digit value is an @lid id, not a phone)
+  var wa=String(r["WA Number"]||"").replace(/\D/g,"");
+  if(wa && wa.length>=10 && wa.length<=13) return wa;
+  return "";
+}
+function applicantByChat(chatId,waNumber){
+  return (D.applicants||[]).find(function(x){
+    return (chatId && String(x["Chat ID"]||"")===String(chatId)) || (waNumber && String(x["WA Number"]||"")===String(waNumber));
+  });
+}
+function roleOf(chatId,waNumber){ var a=applicantByChat(chatId,waNumber); return a?(a.Post||""):"" }
+function phoneForConv(chatId,waNumber){
+  var a=applicantByChat(chatId,waNumber); var p=resolvePhone(a);
+  if(p)return p;
+  var wa=String(waNumber||"").replace(/\D/g,"");
+  return (wa.length>=10&&wa.length<=13)?wa:"Candidate";
 }
 function renderChat(){
   var g=groupConvs(), ids=Object.keys(g);
@@ -333,22 +360,22 @@ function renderChat(){
   // conversation list
   var list="";
   ids.forEach(function(id){
-    var arr=g[id], last=arr[arr.length-1], num=(arr[0]["WA Number"]||id).replace(/@.*$/,"");
-    var role=roleOf(num);
+    var arr=g[id], last=arr[arr.length-1], wa=arr[0]["WA Number"]||"";
+    var num=phoneForConv(id,wa), role=roleOf(id,wa);
     list+='<div class="conv '+(id===ACTIVE_CONV?"active":"")+'" onclick="openConv(\''+esc(id)+'\')">'
       +'<div class="top"><span class="name">'+esc(num)+'</span><span class="time">'+fmtT(last.Time,true)+'</span></div>'
       +(role?'<span class="role">'+esc(role)+'</span>':'')
       +'<span class="last">'+esc((last.Dir==="OUT"?"Minakshi: ":"")+(last.Text||""))+'</span></div>';
   });
   // active thread
-  var arr=g[ACTIVE_CONV], num=(arr[0]["WA Number"]||ACTIVE_CONV).replace(/@.*$/,"");
+  var arr=g[ACTIVE_CONV], wa=arr[0]["WA Number"]||"", num=phoneForConv(ACTIVE_CONV,wa);
   var body="";
   arr.forEach(function(m){
     var out=(m.Dir||"").toUpperCase()==="OUT";
     body+='<div class="msg '+(out?"out":"in")+'">'+esc(m.Text)+'<div class="meta">'+(out?"Minakshi":"Candidate")+' · '+fmtT(m.Time)+'</div></div>';
   });
   var thread='<div class="thread"><div class="thread-head"><div><div class="nm">'+esc(num)+'</div>'
-    +'<div class="mt">'+(roleOf(num)||"Candidate")+'</div></div></div>'
+    +'<div class="mt">'+(roleOf(ACTIVE_CONV,wa)||"Candidate")+'</div></div></div>'
     +'<div class="thread-body" id="tbody">'+body+'</div>'
     +'<div class="thread-foot">Read-only view · replies are sent automatically on WhatsApp</div></div>';
 
@@ -365,7 +392,7 @@ function renderAppl(){
   var a=D.applicants||[];
   var filtered=a.filter(function(r){
     if(!SEARCH)return true; var s=SEARCH.toLowerCase();
-    return JSON.stringify(r).toLowerCase().indexOf(s)>=0;
+    return (JSON.stringify(r)+" "+resolvePhone(r)).toLowerCase().indexOf(s)>=0;
   });
   var h='<div class="page-head"><h2>Applicants</h2><p>All candidates collected by Minakshi.</p></div>';
   h+='<div class="toolbar"><div class="search">'+svg("search")+'<input id="q" placeholder="Search name, phone, post..." value="'+esc(SEARCH)+'" oninput="SEARCH=this.value;renderAppl()"></div>'
@@ -375,10 +402,10 @@ function renderAppl(){
 
   h+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Name</th><th>Post</th><th>Phone</th><th>CV</th><th>Status</th><th>Action</th></tr></thead><tbody>';
   filtered.slice().reverse().forEach(function(r){
-    var name=r.name||r.Name||"—", phone=r.phone||r.Phone||r["WA Number"]||"";
+    var name=r.name||r.Name||"—", ph=resolvePhone(r), phone=ph?esc(ph):'<span class="muted">—</span>';
     var cv=r["CV Link"]?'<a href="'+esc(r["CV Link"])+'" target="_blank">View</a>':'<span class="muted">—</span>';
     var dec=(r.Decision||"").toLowerCase(), db=dec==="pass"?"b-pass":dec==="fail"?"b-fail":"b-none";
-    h+='<tr><td class="muted">'+fmtT(r.Timestamp)+'</td><td><b>'+esc(name)+'</b></td><td>'+esc(r.Post||"")+'</td><td>'+esc(phone)+'</td><td>'+cv+'</td>'
+    h+='<tr><td class="muted">'+fmtT(r.Timestamp)+'</td><td><b>'+esc(name)+'</b></td><td>'+esc(r.Post||"")+'</td><td>'+phone+'</td><td>'+cv+'</td>'
       +'<td><span class="badge '+db+'">'+esc(r.Decision||"Pending")+'</span></td>'
       +'<td><button class="btn ok sm" onclick="passCand('+r.__row+')">Pass + Link</button></td></tr>';
   });
@@ -399,7 +426,7 @@ function downloadReport(){
   var a=D.applicants||[], s=D.stats||{}, bp=s.byPost||{};
   var when=new Date().toLocaleString();
   var rows=a.slice().reverse().map(function(r){
-    var name=r.name||r.Name||"—", phone=r.phone||r.Phone||r["WA Number"]||"";
+    var name=r.name||r.Name||"—", phone=resolvePhone(r)||"—";
     return '<tr><td>'+fmtT(r.Timestamp)+'</td><td>'+esc(name)+'</td><td>'+esc(r.Post||"")+'</td><td>'+esc(phone)+'</td><td>'+esc(r.Decision||"Pending")+'</td></tr>';
   }).join("");
   var postRows=Object.keys(bp).map(function(k){return '<tr><td>'+esc(k)+'</td><td style="text-align:right">'+bp[k]+'</td></tr>'}).join("");
